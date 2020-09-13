@@ -1,6 +1,6 @@
 import asyncio
 from function.bilibili import bilibili
-from function.mute import time_to_str
+from function.mute import mute_member, time_to_str
 from function.repeat import repeat
 from function.signup import signup
 
@@ -60,28 +60,38 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             await app.sendGroupMessage(group, message.asSendable())
     if message.asDisplay() == "签到":
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(signup(member.id))]))
+    # print(await app.getMember(group, 1424912867))
     if member.id == 349468958 and message.asDisplay().startswith("bilibili"):
-        bilibili(app,group,message.asDisplay())
+        bilibili(app, group, message.asDisplay())
+    if member.id == 349468958 and message.asDisplay().startswith("mute"):
+        mute_member(app, group, message.asSerializationString())
 
 
 @bcc.receiver(MemberMuteEvent)
 async def member_mute_handler(app: GraiaMiraiApplication, event: MemberMuteEvent):
+    if event.operator == None:
+        return
     sstr = time_to_str(event.durationSeconds)
     # print(sstr)
     message = MessageChain(__root__=[
-        Plain(event.member.name + '(' + str(event.member.id) + ') 被 ' + event.operator.name + '(' + str(event.operator.id) + ') 禁言' + sstr)])
+        Plain(event.member.name + '(' + str(event.member.id) + ')被' + event.operator.name + '(' + str(event.operator.id) + ')禁言' + sstr)])
     await app.sendGroupMessage(event.member.group.id, message)
     # print(MemberMuteEvent.durationSeconds)
 
 
 @bcc.receiver(MemberUnmuteEvent)
 async def member_mute_handler(app: GraiaMiraiApplication, event: MemberUnmuteEvent):
+    if event.operator == None:
+        return
     message = MessageChain(__root__=[
-        Plain(event.member.name + '(' + str(event.member.id) + ') 被 ' + event.operator.name + '(' + str(event.operator.id) + ') 解除禁言')])
+        Plain(event.member.name + '(' + str(event.member.id) + ')被' + event.operator.name + '(' + str(event.operator.id) + ')解除禁言')])
     await app.sendGroupMessage(event.member.group.id, message)
+    # app.getMember()
+
 
 @bcc.receiver(ApplicationLaunched)
 async def repeattt(app: GraiaMiraiApplication):
     # asyncio.create_task(repeat(app))
     pass
+
 app.launch_blocking()
