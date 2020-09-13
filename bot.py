@@ -1,4 +1,5 @@
 import asyncio
+from function.bilibili import bilibili
 from function.mute import time_to_str
 from function.repeat import repeat
 from function.signup import signup
@@ -60,7 +61,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     if message.asDisplay() == "签到":
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(signup(member.id))]))
     if member.id == 349468958 and message.asDisplay().startswith("bilibili"):
-        pass
+        bilibili(app,group,message.asDisplay())
 
 
 @bcc.receiver(MemberMuteEvent)
