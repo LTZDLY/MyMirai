@@ -19,3 +19,14 @@ def signup(id: int) -> str:
     write_in_ini('data\\签到.ini', str(id), 'date', str(now))
     sstr = "签到成功！当前连续签到"+str(num)+"天"
     return sstr
+
+def atme(msg: str) -> bool:
+    return(msg.find("349468958") != -1 or
+           msg.find("魔法使") != -1 or
+           msg.find("筱蓝") != -1 or
+           msg.find("小蓝") != -1 or
+           msg.find("蓝蓝") != -1 or
+           msg.find("七曜") != -1 or
+           msg.find("xl") != -1 or
+           msg.find("lsl") != -1 or
+           msg.find("1424912867") != -1)

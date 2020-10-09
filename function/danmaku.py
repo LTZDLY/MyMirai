@@ -4,7 +4,7 @@ from aiowebsocket.converses import AioWebSocket
 import json
 
 
-roomid = '51284'
+roomid = '22478102'
 
 data_raw = '000000{headerLen}0010000100000007000000017b22726f6f6d6964223a{roomid}7d'
 data_raw = data_raw.format(headerLen=hex(
@@ -67,7 +67,7 @@ def printDM(data):
     if(op == 5):
         try:
             jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
-            # print(jd)
+            print(jd)
             if(jd['cmd'] == 'DANMU_MSG'):
                 print('[DANMU] ', jd['info'][2][1], ': ', jd['info'][1])
             elif(jd['cmd'] == 'SEND_GIFT'):

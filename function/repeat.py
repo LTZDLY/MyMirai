@@ -11,5 +11,5 @@ async def repeat(app):
     i = 0
     while i < 10:
         i += 1
-        await asyncio.sleep(5)
         asyncio.create_task(printf(app, i))
+        await asyncio.sleep(5)

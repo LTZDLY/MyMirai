@@ -2,7 +2,7 @@ import asyncio
 from function.bilibili import bilibili
 from function.mute import mute_member, time_to_str
 from function.repeat import repeat
-from function.signup import signup
+from function.signup import atme, signup
 
 import operator
 import random
@@ -53,11 +53,20 @@ async def friend_message_handler(app: GraiaMiraiApplication, message: MessageCha
 
 @bcc.receiver(GroupMessage)
 async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
-    if (member.id == 349468958):
+    if (member.id == 34946895888):
         flag = random.randint(0, 99)
         num = random.randint(5, 94)
         if(abs(flag - num) <= 5):
             await app.sendGroupMessage(group, message.asSendable())
+    mygroup = 958056260
+    if (member.id != 349468958):
+        msg = message.asSerializationString()
+        if(atme(msg)):
+            message_a = MessageChain(__root__=[
+                Plain("消息监听：\n" + member.name + '(' + str(member.id) + ")在" + group.name + '(' + str(group.id) + ")中可能提到了我：\n")])
+            message_b = message.asSendable()
+            message_a.plus(message_b)
+            await app.sendGroupMessage(mygroup, message_a)
     if message.asDisplay() == "签到":
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(signup(member.id))]))
     # print(await app.getMember(group, 1424912867))

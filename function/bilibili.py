@@ -17,7 +17,7 @@ async def sign(app, group):
     r = requests.get(url, headers=headers)
     if (r.json()["code"] == 0):
         await app.sendGroupMessage(group, MessageChain.create([Plain("签到成功！本次签到奖励为：" + r.json()["data"]["text"])]))
-        await app.sendGroupMessage(group, MessageChain.create([Plain("本月一共签到" + r.json()["data"]["hadSignDays"] + "天")]))
+        await app.sendGroupMessage(group, MessageChain.create([Plain("本月一共签到" + str(r.json()["data"]["hadSignDays"]) + "天")]))
     else:
         await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
 
@@ -68,7 +68,7 @@ async def change(app, group, msg: str):
 
 
 def bilibili(app, group, msg: str):
-    if (msg == "bilibili.sign"):
+    if (msg == "bilibili.signup"):
         asyncio.create_task(sign(app, group))
     elif (msg == "bilibili.get"):
         asyncio.create_task(get(app, group))
