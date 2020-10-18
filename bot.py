@@ -1,8 +1,14 @@
 import asyncio
+from function.permission import setMain
+from function.switch import switch
+from function.ini import read_from_ini, write_in_ini
+from re import escape
+from function.image import seImage
+from function.cherugo import cheru2str, str2cheru
 from function.bilibili import bilibili
 from function.mute import mute_member, time_to_str
 from function.repeat import repeat
-from function.signup import atme, signup
+from function.signup import atme, choice, signup
 
 import operator
 import random
@@ -17,7 +23,7 @@ from graia.application.group import Member
 from graia.application.friend import Friend
 from graia.broadcast import Broadcast
 
-from graia.application.message.elements.internal import Plain
+from graia.application.message.elements.internal import At, Image, Plain
 
 from graia.application.entry import FriendMessage
 from graia.application.entry import GroupMessage
@@ -33,8 +39,8 @@ bcc = Broadcast(loop=loop)
 app = GraiaMiraiApplication(
     broadcast=bcc,
     connect_info=Session(
-        host="http://localhost:8080",  # 填入 httpapi 服务运行的地址
-        authKey="LTZDLYLLS",  # 填入 authKey
+        host="http://localhost:8098",  # 填入 httpapi 服务运行的地址
+        authKey="LLSShinoai",  # 填入 authKey
         account=1424912867,  # 你的机器人的 qq 号
         websocket=True  # Graia 已经可以根据所配置的消息接收的方式来保证消息接收部分的正常运作.
     )
@@ -67,13 +73,62 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             message_b = message.asSendable()
             message_a.plus(message_b)
             await app.sendGroupMessage(mygroup, message_a)
+
+    if member.id == 349468958 and message.asDisplay().startswith("bilibili"):
+        bilibili(app, group, message.asDisplay())
+
+    if member.id == 349468958 and message.asDisplay().startswith("switch "):
+        asyncio.create_task(switch(app, group, member, message.asDisplay()))
+    
+    if message.asDisplay().startswith("set ") or message.asDisplay().startswith("off "):
+        asyncio.create_task(setMain(app, member, group, message.asSerializationString()))
+
+    if (int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0):
+        return
+
     if message.asDisplay() == "签到":
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(signup(member.id))]))
     # print(await app.getMember(group, 1424912867))
-    if member.id == 349468958 and message.asDisplay().startswith("bilibili"):
-        bilibili(app, group, message.asDisplay())
     if member.id == 349468958 and message.asDisplay().startswith("mute"):
         mute_member(app, group, message.asSerializationString())
+    if message.asDisplay().startswith("切噜 "):
+        s = message.asDisplay().replace("切噜 ", '', 1)
+        if len(s) > 500:
+            msg = '切、切噜太长切不动勒切噜噜...'
+        else:
+            msg = '切噜～♪' + str2cheru(s)
+        await app.sendGroupMessage(group, MessageChain(__root__=[Plain(msg)]))
+    if message.asDisplay().startswith("切噜～♪"):
+        s = message.asDisplay().replace("切噜～♪", '', 1)
+        msg = cheru2str(s)
+        await app.sendGroupMessage(group, MessageChain(__root__=[At(member.id), Plain(msg)]))
+    if message.asDisplay().startswith("来点"):
+        asyncio.create_task(seImage(app, group, message.asDisplay()))
+    if message.asDisplay().startswith("choice "):
+        ss = message.asSerializationString().split(']', 1)
+        s = ss[1]
+        while s.find('  ') != -1:
+            s = s.replace('  ', ' ')
+        s = s.replace("choice ", '', 1)
+        msg = choice(s)
+        await app.sendGroupMessage(group, MessageChain.fromSerializationString(msg))
+    if message.asDisplay().startswith("选择 "):
+        print(message.__root__)
+        ss = message.asSerializationString().split(']', 1)
+        s = ss[1]
+        while s.find('  ') != -1:
+            s = s.replace('  ', ' ')
+        s = s.replace("选择 ", '', 1)
+        msg = choice(s)
+        await app.sendGroupMessage(group, MessageChain.fromSerializationString(msg))
+    if message.asDisplay() == "/生日快乐":
+        await app.sendGroupMessage(group, MessageChain(__root__=[Plain('禁止/生日快乐')]))
+    if message.asDisplay().startswith("echo ") and message.asDisplay() != "echo ":
+        message_a = message
+        message_a.__root__[1].text = message_a.__root__[
+            1].text.replace('echo ', '', 1)
+        await app.sendGroupMessage(group, message_a.asSendable())
+        pass
 
 
 @bcc.receiver(MemberMuteEvent)
