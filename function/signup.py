@@ -1,8 +1,14 @@
 
 import datetime
-from function.ini import read_from_ini, write_in_ini
-import random
 import json
+import os
+import random
+
+from graia.application.group import Group
+from graia.application.message.chain import MessageChain
+from graia.application.message.elements.internal import Plain
+
+from function.ini import read_from_ini, write_in_ini
 
 
 def signup(id: int) -> str:
@@ -24,15 +30,20 @@ def signup(id: int) -> str:
 
 
 def atme(msg: str) -> bool:
-    return(msg.find("349468958") != -1 or
-           msg.find("魔法使") != -1 or
-           msg.find("筱蓝") != -1 or
-           msg.find("小蓝") != -1 or
-           msg.find("蓝蓝") != -1 or
-           msg.find("七曜") != -1 or
-           msg.find("xl") != -1 or
-           msg.find("lsl") != -1 or
-           msg.find("1424912867") != -1)
+    Localpath = './data/data.json'
+    data = {}
+    if os.path.exists(Localpath) == False:
+        return False
+    else:
+        fr = open(Localpath, encoding='utf-8')
+        data = json.load(fr)
+        fr.close()
+        if not('Monitor' in data):
+            return False
+    for i in data['Monitor']:
+        if(msg.find(i) != -1):
+            return True
+    return False
 
 
 def choice(msg: str) -> str:
@@ -53,3 +64,57 @@ def choice(msg: str) -> str:
         r = random.randint(-1, len(text))
     return text[r]
 
+
+def loadDefine():
+    Localpath = './data/data.json'
+    data = {}
+    if os.path.exists(Localpath) == False:
+        return {}
+    else:
+        fr = open(Localpath, encoding='utf-8')
+        data = json.load(fr)
+        fr.close()
+        if not('Define' in data):
+            return {}
+    return data['Define']
+
+
+def define(msg: str):
+    msg = msg.replace('define ', '', 1)
+    if(msg.find('->') == -1):
+        return
+    msg.replace('define ', '', 1)
+    text = msg.split('->')
+    data = loadDefine()
+    Localpath = './data/data.json'
+    data[text[0]] = text[1]
+    if os.path.exists(Localpath) == False:
+        jsObj = {'Define': data}
+        jsObj = json.dumps(jsObj, ensure_ascii=False)
+        with open(Localpath, "w") as fw:
+            fw.write(jsObj)
+            fw.close()
+    else:
+        fr = open(Localpath, encoding='utf-8')
+        jsObj = json.load(fr)
+        fr.close()
+        data_new = {"Define": data}
+        for i in data_new:
+            jsObj[i] = data_new[i]
+        with open(Localpath, "w") as fw:
+            jsObj = json.dumps(jsObj)
+            fw.write(jsObj)
+            fw.close()
+
+    pass
+
+
+async def paraphrase(app, group: Group, msg: str, feedback=False) -> str:
+    data = loadDefine()
+    for i in data:
+        if msg.find(data[i] == -1):
+            continue
+        if feedback == True:
+            await app.sendGroupMessage(group, MessageChain(__root__=[Plain('发生转义：\n' + i + '->' + data[i])]))
+        msg = msg.replace(i, data[i])
+    return msg

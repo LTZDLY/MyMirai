@@ -1,7 +1,8 @@
 # from function.signup import permissionCheck
-import os
 import json
+import os
 from typing import Dict
+
 from graia.application.group import Group, Member
 
 
@@ -11,7 +12,7 @@ def loadPermission():
     if os.path.exists(Localpath) == False:
         return {"AAOP": [349468958], "AOP": [], "OP": {}}
     else:
-        fr = open(Localpath)
+        fr = open(Localpath, encoding='utf-8')
         data = json.load(fr)
         fr.close()
         if not('Permission' in data):
@@ -116,12 +117,12 @@ async def setMain(app, member: Member, group: Group, message: str):
 
     if os.path.exists(Localpath) == False:
         jsObj = {'Permission': data}
-        jsObj = json.dumps(jsObj)
+        jsObj = json.dumps(jsObj, ensure_ascii=False)
         with open(Localpath, "w") as fw:
             fw.write(jsObj)
             fw.close()
     else:
-        fr = open(Localpath)
+        fr = open(Localpath, encoding='utf-8')
         jsObj = json.load(fr)
         fr.close()
         data_new = {"Permission": data}

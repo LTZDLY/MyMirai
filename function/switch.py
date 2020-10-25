@@ -1,9 +1,10 @@
 
-from function.permission import permissionCheck
+from graia.application.group import Group, Member
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
+
 from function.ini import write_in_ini
-from graia.application.group import Group, Member
+from function.permission import permissionCheck
 
 
 async def switch(app, group: Group, sender: Member, message: str):
