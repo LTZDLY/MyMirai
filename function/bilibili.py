@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import time
 from datetime import datetime, timedelta
 from typing import Dict
@@ -151,15 +152,15 @@ async def dayPersonFind(app, group, msg: str, flag=False):
                 break
             ss = ''
             num = 1
-            for r.json()["data"] in i["damage_list"]:
+            for j in i["damage_list"]:
                 ss += '\n第' + str(num).rstrip('.0') + '刀：' +\
-                    '\n时间：' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(r.json()["data"]["datetime"])) +\
-                    '\nboss：' + r.json()["data"]["boss_name"] +\
-                    '\n伤害：' + str(r.json()["data"]["damage"])
-                if r.json()["data"]["kill"] != 0:
+                    '\n时间：' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(j["datetime"])) +\
+                    '\nboss：' + j["boss_name"] +\
+                    '\n伤害：' + str(j["damage"])
+                if j["kill"] != 0:
                     ss += '，尾刀'
                     num += 0.5
-                elif r.json()["data"]["reimburse"] != 0:
+                elif j["reimburse"] != 0:
                     ss += '，补偿刀'
                     num += 0.5
                 else:
@@ -263,6 +264,180 @@ async def findWorkDetails(app, group, msg: str):
     pass
 
 
+async def draw(app, group, upflag=False):
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+
+    star3 = []
+    star2 = []
+    star1 = []
+    upstar3 = []
+    upstar2 = []
+    out = []
+    num3 = 0
+    num2 = 0
+    num1 = 0
+    sstr = ""
+
+    for i in data["data"]:
+        if upflag == True and i["up"] == 1:
+            if i["star"] == 3:
+                upstar3.append(i["name"])
+            elif i["star"] == 2:
+                upstar2.append(i["name"])
+        else:
+            if i["type"] != 0:
+                continue
+            if i["star"] == 3:
+                star3.append(i["name"])
+            elif i["star"] == 2:
+                star2.append(i["name"])
+            elif i["star"] == 1:
+                star1.append(i["name"])
+
+    for i in range(0, 9):
+        ran = random.uniform(0, 100000)
+        if ran > 97500:
+            if upflag == True and upstar3 and ran < 98200:
+                out.append('【' + random.choice(upstar3) + '】')
+                sstr = "おめでとうございます！\n"
+            else:
+                out.append('【' + random.choice(star3) + '】')
+            num3 += 1
+        elif ran < 79500:
+            out.append(random.choice(star1))
+            num1 += 1
+        else:
+            out.append(random.choice(star2))
+            num2 += 1
+
+    ran = random.uniform(0, 100000)
+    if ran > 97500:
+        if upflag == True and upstar3 and ran < 98200:
+            out.append(random.choice(upstar3))
+            sstr = "おめでとうございます！\n"
+        else:
+            out.append('【' + random.choice(star3) + '】')
+        num3 += 1
+    else:
+        out.append(random.choice(star2))
+        num2 += 1
+    if sstr == "":
+        sstr = "素敵な仲間が増えますよ！\n"
+    for i in range(0, 5):
+        sstr += out[i] + ' '
+    sstr += '\n'
+    for i in range(5, 10):
+        sstr += out[i] + ' '
+    sstr += "\n3星：" + str(num3) + "    2星：" + str(num2) + "    1星：" + str(num1) + \
+        "\n女神石：" + str(50 * num3 + 10 * num2 + num1) + '\n当前卡池信息：'
+    if upflag == True and upstar3:
+        for i in upstar3:
+            sstr += i + ' '
+        sstr += 'UP池'
+    else:
+        sstr += "白金标准池"
+    await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
+    pass
+
+
+async def drawauto(app, group, msg: str, upflag=False):
+    text = msg.split(' ')
+    if(len(text) != 2):
+        return
+    wanna = text[1]
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    flag = 0
+    for i in data["data"]:
+        if i["name"] == wanna and (i["type"] == 0 or i["up"] == 1):
+            flag = 1
+            break
+    if (flag == 0):
+        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        return
+    star3 = []
+    star2 = []
+    star1 = []
+    upstar3 = []
+    upstar2 = []
+    num3 = 0
+    num2 = 0
+    num1 = 0
+
+    for i in data["data"]:
+        if upflag == True and i["up"] == 1:
+            if i["star"] == 3:
+                upstar3.append(i["name"])
+            elif i["star"] == 2:
+                upstar2.append(i["name"])
+        else:
+            if i["type"] != 0:
+                continue
+            if i["star"] == 3:
+                star3.append(i["name"])
+            elif i["star"] == 2:
+                star2.append(i["name"])
+            elif i["star"] == 1:
+                star1.append(i["name"])
+    stone = 0
+    times = 0
+    while True:
+        times += 10
+        out = []
+        for i in range(0, 9):
+            ran = random.uniform(0, 100000)
+            if ran > 97500:
+                if upflag == True and upstar3 and ran < 98200:
+                    out.append(random.choice(upstar3))
+                else:
+                    out.append(random.choice(star3))
+                num3 += 1
+            elif ran < 79500:
+                out.append(random.choice(star1))
+                num1 += 1
+            else:
+                out.append(random.choice(star2))
+                num2 += 1
+
+        ran = random.uniform(0, 100000)
+        if ran > 97500:
+            if upflag == True and upstar3 and ran < 98200:
+                out.append(random.choice(upstar3))
+            else:
+                out.append(random.choice(star3))
+            num3 += 1
+        else:
+            out.append(random.choice(star2))
+            num2 += 1
+        pass
+        if wanna in out:
+            print(wanna)
+            print(out)
+            break
+    stone += 50 * num3 + 10 * num2 + num1
+    s = "おめでとうございます！" + \
+        "\n消耗石头：" + str(times * 150) + \
+        "\n抽卡次数：" + str(times) + \
+        "\n获得女神石：" + str(stone) + \
+        "\n3星：" + str(num3) + "    2星：" + str(num2) + "    1星：" + str(num1) + \
+        "\n当前卡池信息："
+    if upflag == True and upstar3:
+        for i in upstar3:
+            s += i + ' '
+        s += 'UP池'
+    else:
+        s += "白金标准池"
+    await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+    pass
+
+
 def id2character(data: Dict, id: str) -> str:
     for i in data["data"]:
         if i["id"] == id:
@@ -281,60 +456,36 @@ def bilibili(app, group, msg: str):
         asyncio.create_task(change(app, group, msg))
 
 
-def pcr(app, group, msg: str):
-    if (msg == "pcr.report"):
+def pcrteam(app, group, msg: str):
+    if (msg == "pcrteam.report"):
         asyncio.create_task(dayReportCollect(app, group))
-    elif (msg == "pcr.daily"):
+    elif (msg == "pcrteam.daily"):
         asyncio.create_task(dayReportTotal(app, group))
-    elif (msg == "pcr.daily.details"):
+    elif (msg == "pcrteam.daily.details"):
         asyncio.create_task(dayReportTotal(app, group, True))
-    elif (msg.startswith("pcr.find.details")):
+    elif (msg.startswith("pcrteam.find.details")):
         asyncio.create_task(dayPersonFind(app, group, msg, True))
-    elif (msg.startswith("pcr.find")):
+    elif (msg.startswith("pcrteam.find")):
         asyncio.create_task(dayPersonFind(app, group, msg))
-    elif (msg.startswith("pcr.work.details")):
+    elif (msg.startswith("pcrteam.work.details")):
         asyncio.create_task(findWorkDetails(app, group, msg))
-    elif (msg.startswith("pcr.work")):
+    elif (msg.startswith("pcrteam.work")):
         asyncio.create_task(findWork(app, group, msg))
     pass
 
 
+def pcr(app, group, msg: str):
+    if (msg.startswith("pcr.draw.up")):
+        if msg == "pcr.draw.up":
+            asyncio.create_task(draw(app, group, True))
+        else:
+            asyncio.create_task(drawauto(app, group, msg, True))
+    elif (msg.startswith("pcr.draw")):
+        if msg == "pcr.draw":
+            asyncio.create_task(draw(app, group))
+        else:
+            asyncio.create_task(drawauto(app, group, msg))
+
+
 if __name__ == '__main__':
-    workid = 5216
-    url = "https://www.bigfun.cn/api/feweb?target=get-gzlj-team-war-work-detail%2Fa&work_id=" + \
-        str(workid)
-    cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + \
-        bili_jct + '; session-api=3o2l5qds0cepbb2ks73rhn1pks'
-    headers = {"cookie": cookie, "csrf_token": token, "csrf": token}
-    r = requests.get(url, headers=headers)
-    print(r.text)
-
-    Localpath = './data/pcrcharacter.json'
-    data = {}
-    fr = open(Localpath, encoding='utf-8')
-    data = json.load(fr)
-    fr.close()
-
-    if (r.json()["code"] == 0):
-        s = ''
-        s += '\n公会战：' + r.json()["data"]["battle_info"]["name"]
-        s += '\n标题：' + r.json()["data"]["title"]
-        s += '\nboss：' + r.json()["data"]["boss"]["name"]
-        s += '\n周目：' + str(r.json()["data"]["boss_cycle"])
-        s += '\n期望伤害：' + str(r.json()["data"]["expect_injury"])
-        s += '\n角色：'
-        role = json.loads(r.json()["data"]["role_list"])
-        for i in role:
-            s += id2character(data, i["id"]) + str(i["stars"]) + '星'
-            if i["weapons"] == 1:
-                s += '专武 '
-            else:
-                s += ' '
-        s += '\n作业轴：\n' + r.json()["data"]["work"]
-        if(r.json()["data"]["remark"] != ''):
-            s += '\n备注：' + r.json()["data"]["remark"]
-        pass
-        print(s)
-    else:
-        print(r.json()["message"])
     pass

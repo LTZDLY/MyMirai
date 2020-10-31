@@ -15,14 +15,15 @@ from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import At, Image, Plain
 from graia.broadcast import Broadcast
 
-from function.bilibili import bilibili, pcr
+from function.bilibili import bilibili, pcr, pcrteam
 from function.cherugo import cheru2str, str2cheru
 from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
 from function.mute import mute_member, time_to_str
 from function.permission import permissionCheck, setMain
 from function.repeat import repeat
-from function.signup import atme, choice, define, loadDefine, paraphrase, signup
+from function.signup import (atme, choice, define, loadDefine, paraphrase,
+                             signup)
 from function.switch import switch
 
 loop = asyncio.get_event_loop()
@@ -93,7 +94,9 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         return
 
     # TODO 实装通过bigfun实现的会战信息查询系统
-    if msg.startswith("pcr."):
+    if int(read_from_ini('data/switch.ini', str(group.id), 'pcrteam', '0')) == 1 and msg.startswith("pcrteam."):
+        pcrteam(app, group, msg)
+    if (msg.startswith("pcr.")):
         pcr(app, group, msg)
     '''
     if msg == '110':
