@@ -1,7 +1,8 @@
 import asyncio
+
 from graia.application.group import Group, Member, MemberPerm
 from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.application.message.elements.internal import At, Plain
 
 
 def time_to_str(second: int) -> str:
@@ -24,21 +25,33 @@ def time_to_str(second: int) -> str:
         (str(second) + '秒') if (second != 0) else '')
     return sstr
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        pass
+ 
+    try:
+        import unicodedata
+        unicodedata.numeric(s)
+        return True
+    except (TypeError, ValueError):
+        pass
+ 
+    return False
 
-def mute_member(app, group: Group, msg: str):
-    if msg.find('[mirai:at:') == False:
+def mute_member(app, group: Group, msg: MessageChain):
+    if not msg.has(At):
         return
     mutelist = []
     time = 0
-    text = msg.split(' ')
-    for sstr in text[1:]:
-        if sstr.startswith('[mirai:at:'):
-            ssstr = sstr.split(',')
-            mutelist.append(int(ssstr[0][10:]))
-        else:
-            time = float(sstr)
-            if(time < 0):
-                time = 0
+    text = msg.asDisplay().split(' ')
+    for at in msg.get(At):
+        mutelist.append(at.target)
+    for i in text:
+        if is_number(i):
+            time = max(time, float(i))
     mutelist.sort()
     asyncio.create_task(set_mute(app, group, mutelist, time))
 
@@ -54,7 +67,7 @@ async def set_mute(app, group: Group, mutelist: list, mutetime):
         sender: Member
         sender = await app.getMember(group, mutelist[i])
         sender_flag: int
-        print(sender.permission.Member)
+        # print(sender.permission.Member)
         sender_flag = 1 if sender.permission == MemberPerm.Member else 2 if sender.permission == MemberPerm.Administrator else 3
         if(i != lenn - 1):
             if(mutelist[i] == mutelist[i+1]):

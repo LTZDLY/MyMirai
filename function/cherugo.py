@@ -91,7 +91,7 @@ async def decherulize(bot, ev: CQEvent):
 if __name__ == '__main__':
     ss = input()
     print(ss)
-    ss = ss.replace('切噜～♪', '')
+    ss = ss.replace('切噜~♪', '')
     # print('切噜～♪' + str2cheru(ss))
     print('的切噜噜是：\n' + (cheru2str(ss)))
     pass

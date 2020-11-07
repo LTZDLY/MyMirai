@@ -1,9 +1,11 @@
 import asyncio
+from asyncio.tasks import Task
 import datetime
+from function.danmakunew import danmaku, startup
 import operator
 import random
 from re import escape
-from typing import Optional
+from typing import Dict, Optional
 
 from graia.application import GraiaMiraiApplication, Session
 from graia.application.entry import (BotMuteEvent, FriendMessage, GroupMessage,
@@ -21,10 +23,12 @@ from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
 from function.mute import mute_member, time_to_str
 from function.permission import permissionCheck, setMain
-from function.repeat import repeat
+from function.repeat import clock, repeat
 from function.signup import (atme, choice, define, loadDefine, paraphrase,
                              signup)
 from function.switch import switch
+
+a = {}
 
 loop = asyncio.get_event_loop()
 
@@ -52,11 +56,15 @@ async def friend_message_handler(app: GraiaMiraiApplication, message: MessageCha
 
 @bcc.receiver(GroupMessage)
 async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
-    if (member.id == 34946895888):
-        flag = random.randint(0, 99)
-        num = random.randint(5, 94)
-        if(abs(flag - num) <= 5):
-            await app.sendGroupMessage(group, message.asSendable())
+    '''
+    if message.asDisplay() == '发送' and member.id == 349468958:
+        aaa = [1138925965, 980644912, 1002841584, 1002962655, 596215633, 1125282555]
+        sss = '今天是切噜妈妈的生日！把这条消息发送到5个群可以凭截图找切噜妈妈获得100元生日红包！我试过了是真的，妈妈真的给我发红包了！今天真的是切噜妈妈的生日！'
+        ss = '1234567890-'
+        for i in aaa:
+            await app.sendGroupMessage(i, MessageChain.create([Plain(sss)]))
+    '''
+
     mygroup = 958056260
     if (member.id != 349468958):
         msg = message.asSerializationString()
@@ -93,6 +101,14 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     if (int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0):
         return
 
+    if (message.asDisplay() == '?' or message.asDisplay() == '？' or
+        message.asDisplay() == '草' or message.asDisplay() == '艹' or
+        message.asDisplay() == '[图片]'):
+        flag = random.randint(0, 99)
+        num = random.randint(5, 94)
+        if(abs(flag - num) <= 5):
+            await app.sendGroupMessage(group, message.asSendable())
+
     # TODO 实装通过bigfun实现的会战信息查询系统
     if int(read_from_ini('data/switch.ini', str(group.id), 'pcrteam', '0')) == 1 and msg.startswith("pcrteam."):
         pcrteam(app, group, msg)
@@ -108,25 +124,48 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     '''
     # TODO 实装TouHouRoll机
 
+    # FIXME 直播间开播提示而不是弹幕姬
+    if member.id == 349468958 and msg.startswith("danmaku "):
+        roomid = msg.replace("danmaku ", '')
+        global a
+        if (group.id, member.id) in a:
+            await app.sendGroupMessage(group, MessageChain.create([Plain("你在群里已经有一个正在视奸的直播啦")]))
+        else:
+            a[group.id, member.id] = asyncio.create_task(
+                startup(app, group, roomid))
+            await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸开始")]))
+
+    if member.id == 349468958 and msg.startswith("danmaku.end"):
+        t = a.get((group.id, member.id), None)
+        if t:
+            t.cancel()
+            await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸停止")]))
+        else:
+            await app.sendGroupMessage(group, MessageChain.create([At(349468958), Plain("你并没有在视奸")]))
+
     if msg == "签到":
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(signup(member.id))]))
     # print(await app.getMember(group, 1424912867))
     if member.id == 349468958 and msg.startswith("mute"):
-        mute_member(app, group, message.asSerializationString())
+        mute_member(app, group, message)
 
     if message.asDisplay().startswith("define "):
         if(permissionCheck(member.id, group.id) == 3):
             define(message.asDisplay())
 
+    if msg == "切噜":
+        await app.sendGroupMessage(group, MessageChain(__root__=[Plain('切噜~♪')]))
     if msg.startswith("切噜 "):
         s = msg.replace("切噜 ", '', 1)
         if len(s) > 500:
             msg = '切、切噜太长切不动勒切噜噜...'
         else:
-            msg = '切噜～♪' + str2cheru(s)
+            msg = '切噜~♪' + str2cheru(s)
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(msg)]))
-    elif msg.startswith("切噜～♪"):
-        s = msg.replace("切噜～♪", '', 1)
+    elif msg.startswith("切噜~♪"):
+        s = msg.replace("切噜~♪", '', 1)
+        if s == '':
+            return
         msg = cheru2str(s)
         await app.sendGroupMessage(group, MessageChain(__root__=[At(member.id), Plain(msg)]))
 
@@ -183,7 +222,8 @@ async def member_mute_handler(app: GraiaMiraiApplication, event: MemberUnmuteEve
 
 @bcc.receiver(ApplicationLaunched)
 async def repeattt(app: GraiaMiraiApplication):
-    # asyncio.create_task(repeat(app))
+    # TODO 实装整点报时之类的功能
+    asyncio.create_task(clock(app))
     pass
 
 app.launch_blocking()

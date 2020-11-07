@@ -354,12 +354,10 @@ async def drawauto(app, group, msg: str, upflag=False):
     fr = open(Localpath, encoding='utf-8')
     data = json.load(fr)
     fr.close()
-    flag = 0
     for i in data["data"]:
         if i["name"] == wanna and (i["type"] == 0 or i["up"] == 1):
-            flag = 1
             break
-    if (flag == 0):
+    else:
         await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
         return
     star3 = []
@@ -416,10 +414,7 @@ async def drawauto(app, group, msg: str, upflag=False):
         else:
             out.append(random.choice(star2))
             num2 += 1
-        pass
         if wanna in out:
-            print(wanna)
-            print(out)
             break
     stone += 50 * num3 + 10 * num2 + num1
     s = "おめでとうございます！" + \
@@ -436,6 +431,56 @@ async def drawauto(app, group, msg: str, upflag=False):
         s += "白金标准池"
     await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
     pass
+
+
+async def setUP(app, group, msg):
+    text = msg.split(' ')
+    if(len(text) != 2):
+        return
+    wanna = text[1]
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    flag = 0
+    for i in data["data"]:
+        if i["name"] == wanna:
+            i["up"] = 1
+            break
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        return
+    await app.sendGroupMessage(group, MessageChain.create([Plain("将" + wanna + "设置为up卡成功！")]))
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+
+
+async def offUP(app, group, msg):
+    text = msg.split(' ')
+    if(len(text) != 2):
+        return
+    wanna = text[1]
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    flag = 0
+    for i in data["data"]:
+        if i["name"] == wanna:
+            i["up"] = 0
+            break
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        return
+    await app.sendGroupMessage(group, MessageChain.create([Plain("将" + wanna + "取消up卡成功！")]))
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
 
 
 def id2character(data: Dict, id: str) -> str:
@@ -475,7 +520,11 @@ def pcrteam(app, group, msg: str):
 
 
 def pcr(app, group, msg: str):
-    if (msg.startswith("pcr.draw.up")):
+    if (msg.startswith("pcr.draw.setup")):
+        asyncio.create_task(setUP(app, group, msg))
+    elif (msg.startswith("pcr.draw.offup")):
+        asyncio.create_task(offUP(app, group, msg))
+    elif (msg.startswith("pcr.draw.up")):
         if msg == "pcr.draw.up":
             asyncio.create_task(draw(app, group, True))
         else:
