@@ -28,6 +28,7 @@ async def repeat(app):
     elif h == 18:
         sss = '切噜~！18点啦！还有许多作业需要完成，现在还不能休息哦！'
     elif h == 23:
+        asyncio.create_task(sign(app, 372733015))
         sss = '切噜~！23点啦！到睡觉的时候咯！晚安切噜！'
     if sss == '':
         return
@@ -50,9 +51,13 @@ async def clock(app):
         print("时间矫正完成。当前时间：", datetime.datetime.now())
         while True:
             t = datetime.datetime.now()
-            if t.minute != 0 or t.second != 0:
+            if t.minute != 0:
+                print("产生分的时间误差，开始矫正", t)
                 break
             asyncio.create_task(repeat(app))
+            if t.second != 0:
+                print("产生秒的时间误差，开始矫正", t)
+                break
             await asyncio.sleep(3600)
             pass
 

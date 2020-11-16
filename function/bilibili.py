@@ -9,9 +9,9 @@ import requests
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 
-token = "c6af35ef30f73e1e4ca43e917c5ffd99"
-SESSDATA = "ad46c3ff%2C1605266060%2Cd7491*51"
-bili_jct = "c6af35ef30f73e1e4ca43e917c5ffd99"
+token = "8b9a518db5b1c0d6459d9d474a231c25"
+SESSDATA = "2c020e12%2C1618843162%2C303dc*a1"
+bili_jct = "8b9a518db5b1c0d6459d9d474a231c25"
 cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + bili_jct
 
 
@@ -71,6 +71,11 @@ async def change(app, group, msg: str):
     else:
         await app.sendGroupMessage(group, MessageChain.create([Plain("直播间标题更改失败，可能是cookie过期")]))
 
+def short2name(data: Dict, short: str) -> str:
+    for i in data["data"]:
+        if short in i["short"]:
+            return i["name"]
+    return short
 
 async def dayReportCollect(app, group):
     url = "https://www.bigfun.cn/api/feweb?target=gzlj-clan-day-report-collect%2Fa"
@@ -348,14 +353,14 @@ async def drawauto(app, group, msg: str, upflag=False):
     text = msg.split(' ')
     if(len(text) != 2):
         return
-    wanna = text[1]
     Localpath = './data/pcrcharacter.json'
     data = {}
     fr = open(Localpath, encoding='utf-8')
     data = json.load(fr)
     fr.close()
+    wanna = short2name(data, text[1])
     for i in data["data"]:
-        if i["name"] == wanna and (i["type"] == 0 or i["up"] == 1):
+        if i["name"] == wanna and (i["type"] == 0 or (upflag and i["up"] == 1)):
             break
     else:
         await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
@@ -437,15 +442,14 @@ async def setUP(app, group, msg):
     text = msg.split(' ')
     if(len(text) != 2):
         return
-    wanna = text[1]
     Localpath = './data/pcrcharacter.json'
     data = {}
     fr = open(Localpath, encoding='utf-8')
     data = json.load(fr)
     fr.close()
-    flag = 0
+    wanna = short2name(data, text[1])
     for i in data["data"]:
-        if i["name"] == wanna:
+        if wanna == i["name"]:
             i["up"] = 1
             break
     else:
@@ -462,15 +466,14 @@ async def offUP(app, group, msg):
     text = msg.split(' ')
     if(len(text) != 2):
         return
-    wanna = text[1]
     Localpath = './data/pcrcharacter.json'
     data = {}
     fr = open(Localpath, encoding='utf-8')
     data = json.load(fr)
     fr.close()
-    flag = 0
+    wanna = short2name(data, text[1])
     for i in data["data"]:
-        if i["name"] == wanna:
+        if wanna == i["name"]:
             i["up"] = 0
             break
     else:
@@ -490,51 +493,75 @@ def id2character(data: Dict, id: str) -> str:
     raise Exception("无效id")
 
 
-def bilibili(app, group, msg: str):
+async def bilibili(app, group, msg: str):
     if (msg == "bilibili.signup"):
-        asyncio.create_task(sign(app, group))
+        await sign(app, group)
     elif (msg == "bilibili.get"):
-        asyncio.create_task(get(app, group))
+        await get(app, group)
     elif (msg == "bilibili.end"):
-        asyncio.create_task(end(app, group))
+        await end(app, group)
     elif (msg.startswith("bilibili.change")):
-        asyncio.create_task(change(app, group, msg))
+        await change(app, group, msg)
 
 
-def pcrteam(app, group, msg: str):
+async def pcrteam(app, group, msg: str):
     if (msg == "pcrteam.report"):
-        asyncio.create_task(dayReportCollect(app, group))
+        await dayReportCollect(app, group)
     elif (msg == "pcrteam.daily"):
-        asyncio.create_task(dayReportTotal(app, group))
+        await dayReportTotal(app, group)
     elif (msg == "pcrteam.daily.details"):
-        asyncio.create_task(dayReportTotal(app, group, True))
+        await dayReportTotal(app, group, True)
     elif (msg.startswith("pcrteam.find.details")):
-        asyncio.create_task(dayPersonFind(app, group, msg, True))
+        await dayPersonFind(app, group, msg, True)
     elif (msg.startswith("pcrteam.find")):
-        asyncio.create_task(dayPersonFind(app, group, msg))
+        await dayPersonFind(app, group, msg)
     elif (msg.startswith("pcrteam.work.details")):
-        asyncio.create_task(findWorkDetails(app, group, msg))
+        await findWorkDetails(app, group, msg)
     elif (msg.startswith("pcrteam.work")):
-        asyncio.create_task(findWork(app, group, msg))
+        await findWork(app, group, msg)
     pass
 
 
-def pcr(app, group, msg: str):
+async def pcr(app, group, msg: str):
     if (msg.startswith("pcr.draw.setup")):
-        asyncio.create_task(setUP(app, group, msg))
+        await setUP(app, group, msg)
     elif (msg.startswith("pcr.draw.offup")):
-        asyncio.create_task(offUP(app, group, msg))
+        await offUP(app, group, msg)
     elif (msg.startswith("pcr.draw.up")):
         if msg == "pcr.draw.up":
-            asyncio.create_task(draw(app, group, True))
+            await draw(app, group, True)
         else:
-            asyncio.create_task(drawauto(app, group, msg, True))
+            await drawauto(app, group, msg, True)
     elif (msg.startswith("pcr.draw")):
         if msg == "pcr.draw":
-            asyncio.create_task(draw(app, group))
+            await draw(app, group)
         else:
-            asyncio.create_task(drawauto(app, group, msg))
+            await drawauto(app, group, msg)
 
 
 if __name__ == '__main__':
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+
+    for i in data["data"]:
+        print(i["name"])
+        aa = []
+        temp = ''
+        while True:
+            temp = input()
+            if temp == '-1':
+                break
+            aa.append(temp)
+            pass
+        i["short"] = aa
+        pass
+    
+    
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
     pass

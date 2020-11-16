@@ -2,3 +2,4 @@
 *.ini
 *.pyc
 *.json
+function/test.py

@@ -1,9 +1,8 @@
 import asyncio
-from asyncio.tasks import Task
 import datetime
-from function.danmakunew import danmaku, startup
 import operator
 import random
+from asyncio.tasks import Task, create_task
 from re import escape
 from typing import Dict, Optional
 
@@ -18,7 +17,9 @@ from graia.application.message.elements.internal import At, Image, Plain
 from graia.broadcast import Broadcast
 
 from function.bilibili import bilibili, pcr, pcrteam
+from function.canvas import canvas
 from function.cherugo import cheru2str, str2cheru
+from function.danmaku import danmaku, startup
 from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
 from function.mute import mute_member, time_to_str
@@ -43,6 +44,8 @@ app = GraiaMiraiApplication(
     )
 )
 
+mygroup = 958056260
+
 
 @bcc.receiver(FriendMessage)
 async def friend_message_handler(app: GraiaMiraiApplication, message: MessageChain, friend: Friend):
@@ -65,7 +68,6 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             await app.sendGroupMessage(i, MessageChain.create([Plain(sss)]))
     '''
 
-    mygroup = 958056260
     if (member.id != 349468958):
         msg = message.asSerializationString()
         if(atme(msg)):
@@ -90,7 +92,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         msgs = msgs.replace(i, data[i])
 
     if member.id == 349468958 and msg.startswith("bilibili"):
-        bilibili(app, group, msg)
+        asyncio.create_task(bilibili(app, group, msg))
 
     if msg.startswith("switch "):
         asyncio.create_task(switch(app, group, member, msg))
@@ -103,7 +105,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
 
     if (message.asDisplay() == '?' or message.asDisplay() == '？' or
         message.asDisplay() == '草' or message.asDisplay() == '艹' or
-        message.asDisplay() == '[图片]'):
+            message.asDisplay() == '[图片]'):
         flag = random.randint(0, 99)
         num = random.randint(5, 94)
         if(abs(flag - num) <= 5):
@@ -111,9 +113,9 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
 
     # TODO 实装通过bigfun实现的会战信息查询系统
     if int(read_from_ini('data/switch.ini', str(group.id), 'pcrteam', '0')) == 1 and msg.startswith("pcrteam."):
-        pcrteam(app, group, msg)
+        asyncio.create_task(pcrteam(app, group, msg))
     if (msg.startswith("pcr.")):
-        pcr(app, group, msg)
+        asyncio.create_task(pcr(app, group, msg))
     '''
     if msg == '110':
         message = MessageChain.create([
@@ -134,6 +136,10 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             a[group.id, member.id] = asyncio.create_task(
                 startup(app, group, roomid))
             await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸开始")]))
+
+    # TODO canvas任务爬取
+    if msg.startswith('canvas'):
+        asyncio.create_task(canvas(app, group, member, msg))
 
     if member.id == 349468958 and msg.startswith("danmaku.end"):
         t = a.get((group.id, member.id), None)
@@ -196,6 +202,15 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             1].text.replace('echo ', '', 1)
         await app.sendGroupMessage(group, message_a.asSendable())
         pass
+    if message.has(At):
+        flag = 0
+        for at in message.get(At):
+            if at.target == 1424912867:
+                at.target = member.id
+                flag = 1
+        if flag == 0:
+            return
+        await app.sendGroupMessage(group, message.asSendable())
 
 
 @bcc.receiver(MemberMuteEvent)
@@ -218,6 +233,21 @@ async def member_mute_handler(app: GraiaMiraiApplication, event: MemberUnmuteEve
         Plain(event.member.name + '(' + str(event.member.id) + ')被' + event.operator.name + '(' + str(event.operator.id) + ')解除禁言')])
     await app.sendGroupMessage(event.member.group.id, message)
     # app.getMember()
+
+
+@bcc.receiver(BotMuteEvent)
+async def bot_mute_handler(app: GraiaMiraiApplication, event: BotMuteEvent):
+    if event.operator.id == 349468958:
+        return
+    if event.durationSeconds < 43200:
+        return
+    await app.quit(event.operator.group)
+    # TODO 黑名单系统
+    await app.sendGroupMessage(mygroup, MessageChain.create([Plain(
+        "在" + event.operator.group.name + '(' + str(event.operator.group.id) + ')被' +
+        event.operator.name + '(' + str(event.operator.id) + ')禁言' + time_to_str(event.durationSeconds) +
+        '，已自动从群聊中退出并将所在群和禁言人列入黑名单')]))
+    pass
 
 
 @bcc.receiver(ApplicationLaunched)
