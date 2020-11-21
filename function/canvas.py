@@ -1,10 +1,8 @@
-import asyncio
 import json
 from datetime import datetime, timedelta
 from urllib import parse
 
 import requests
-from bs4 import BeautifulSoup
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 from requests.sessions import Session
@@ -18,16 +16,21 @@ def is_json(myjson):
     return True
 
 
+def get_id(member_id: int) -> int:
+    Localpath = './data/tongji.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+
+    for i in data["data"]:
+        if i['qq'] == member_id:
+            return i['user_id']
+    else:
+        raise 'error'
+
+
 def createlink(qq: int) -> Session:
-    s = requests.session()
-    aaaaa = s.get('http://canvas.tongji.edu.cn/login/openid_connect')
-    soup = BeautifulSoup(aaaaa.text, 'html.parser')
-    a = s.get('https://ids.tongji.edu.cn:8443' + soup.form['action'])
-
-    b = s.get('https://ids.tongji.edu.cn:8443/nidp/app/login?flag=true')
-    code = s.post('http://172.81.215.215/pi/crack',
-                  json={'data_url': b.text}).json()['ans']
-
     Ecom_User_ID = 0
     Ecom_Password = ''
 
@@ -45,16 +48,29 @@ def createlink(qq: int) -> Session:
     else:
         raise 'error'
 
+    s = requests.session()
+    s.get('https://ids.tongji.edu.cn:8443')
+    code = ''
+    with s.get('https://ids.tongji.edu.cn:8443/nidp/app/login?flag=true') as code_img:
+        code = s.post('http://172.81.215.215/pi/crack',
+                      json={'data_url': code_img.text}).json()['ans']
+
     data = {'option': 'credential', 'Ecom_User_ID': Ecom_User_ID,
             'Ecom_Password': Ecom_Password, 'Ecom_code': code}
-    ans = s.post(
-        'https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
+            
+    s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
+    s.get('http://canvas.tongji.edu.cn/login')
+    return s
 
-    text = soup.form['action'].split('&')
-    ttext = text[4].split(parse.quote('?'))
-    url = (parse.unquote(ttext[0]) + '?' + ttext[1])[7:]
-    url = url.replace(parse.quote('='), '=').replace(parse.quote('&'), '&')
-    af = s.get(url)
+
+def is_session(s: Session, member_id: int) -> Session:
+    url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
+        datetime.now().strftime('%Y-%m-%d')
+    r = s.get(url)
+    data = json.loads(r.text.replace('while(1);', ''))
+    if 'error' in data:
+        print("检测到canvas登录状态丢失，现尝试重新登录canvas")
+        s = createlink(member_id)
     return s
 
 # 这块好像并没有使用需求
@@ -62,7 +78,8 @@ def createlink(qq: int) -> Session:
 
 def calender(member):
     s = createlink(member.id)
-    url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events?type=assignment&context_codes%5B%5D=user_233046&context_codes%5B%5D=course_30663&context_codes%5B%5D=course_31391&start_date=2020-10-25T16%3A00%3A00.000Z&end_date=2021-02-06T16%3A00%3A00.000Z&per_page=50'
+    url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events?type=assignment&context_codes%5B%5D=course_30663&context_codes%5B%5D=course_31391&start_date=2020-10-25T16%3A00%3A00.000Z&end_date=2021-02-06T16%3A00%3A00.000Z&per_page=50&context_codes%5B%5D=user_' + \
+        str(get_id(member.id))
     r = s.get(url)
     data = json.loads(r.text.replace('while(1);', ''))
     s = ''
@@ -79,8 +96,7 @@ def calender(member):
     pass
 
 
-async def timetable(app, group, member, flag=True):
-    s = createlink(member.id)
+async def timetable(app, s, group, member, flag=True):
     url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
         datetime.now().strftime('%Y-%m-%d')
     r = s.get(url)
@@ -118,7 +134,7 @@ async def timetable(app, group, member, flag=True):
     pass
 
 
-async def addddl(app, group, member, msg: str):
+async def addddl(app, s, group, member, msg: str):
     event_title = ''
     event_start = ''
     event_end = ''
@@ -157,7 +173,7 @@ async def addddl(app, group, member, msg: str):
     aaaa = requests.utils.dict_from_cookiejar(s.cookies)
 
     data = {'calendar_event[title]': event_title, 'calendar_event[start_at]': event_start, 'calendar_event[end_at]': event_end,
-            'calendar_event[location_name]': event_local, 'calendar_event[context_code]': 'user_233046', '_method': _method,
+            'calendar_event[location_name]': event_local, 'calendar_event[context_code]': 'user_' + str(get_id(member.id)), '_method': _method,
             'authenticity_token': parse.unquote(requests.utils.dict_from_cookiejar(s.cookies)['_csrf_token'])}
 
     r = s.post(url, data=data)
@@ -168,7 +184,7 @@ async def addddl(app, group, member, msg: str):
         await app.sendGroupMessage(group, MessageChain.create([Plain('添加成功！')]))
 
 
-async def delddl(app, group, member, msg: str):
+async def delddl(app, s, group, member, msg: str):
     text = msg.split(' ')
     if len(text) == 1:
         await app.sendGroupMessage(group, MessageChain.create([Plain('请输入标题！')]))
@@ -176,8 +192,6 @@ async def delddl(app, group, member, msg: str):
         return
 
     event_title = text[1]
-
-    s = createlink(member.id)
 
     url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
         datetime.now().strftime('%Y-%m-%d')
@@ -203,11 +217,48 @@ async def delddl(app, group, member, msg: str):
         await app.sendGroupMessage(group, MessageChain.create([Plain('删除成功！')]))
 
 
-def markfinish():
-    """
-    docstring
-    """
-    pass
+async def markfinish(app, s: Session, group, member, msg: str):
+
+    text = msg.split(' ')
+    if len(text) == 1:
+        await app.sendGroupMessage(group, MessageChain.create([Plain('请输入标题！')]))
+    elif len(text) != 2:
+        return
+
+    event_title = text[1]
+
+    url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
+        datetime.now().strftime('%Y-%m-%d')
+    r = s.get(url)
+    data = json.loads(r.text.replace('while(1);', ''))
+
+    plannable_id = ''
+    event_id = None
+
+    for i in data:
+        if i['context_type'] == 'User' and i['plannable']['title'] == event_title:
+            plannable_id = i['plannable_id']
+            if i['planner_override'] != None:
+                event_id = i['planner_override']['id']
+            break
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain('查无此事件，请检查标题是否输入正确')]))
+
+    data = {'id': event_id, 'marked_complete': True, 'plannable_id': plannable_id,
+            'plannable_type': 'calendar_event', 'user_id': get_id(member.id),
+            'authenticity_token': parse.unquote(requests.utils.dict_from_cookiejar(s.cookies)['_csrf_token'])}
+    if event_id == None:
+        url = 'http://canvas.tongji.edu.cn/api/v1/planner/overrides'
+        r = s.post(url, data=data)
+    else:
+        url = 'http://canvas.tongji.edu.cn/api/v1/planner/overrides/' + \
+            str(event_id)
+        r = s.put(url, data=data)
+
+    if not is_json(r.text) or 'errors' in r.json():
+        await app.sendGroupMessage(group, MessageChain.create([Plain('标记为完成失败！')]))
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain('标记为完成成功！')]))
 
 
 def markunfinsh():
@@ -217,23 +268,18 @@ def markunfinsh():
     pass
 
 
-async def canvas(app, group, member, msg):
-    try:
-        if (member.id == 349468958 or member.id == 5980403) and msg == 'canvas.todo':
-            await timetable(app, group, member)
-        if (member.id == 349468958 or member.id == 5980403) and msg == 'canvas.todo.finish':
-            await timetable(app, group, member, False)
-        if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.add'):
-            await addddl(app, group, member, msg)
-        if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.del'):
-            await delddl(app, group, member, msg)
-        pass
-    except:
-        await app.sendGroupMessage(group, MessageChain.create([Plain(
-            '并没有记录任何学号信息，如需使用此功能请私聊向bot申请。\n注意：该功能需要用户提供统一身份认证的学号和密码以登录canvas。'
-        )]))
-        pass
+async def canvas(app, group, member, msg, s: Session):
+    s = is_session(s, member.id)
+    if (member.id == 349468958 or member.id == 5980403) and msg == 'canvas.todo':
+        await timetable(app, s, group, member)
+    if (member.id == 349468958 or member.id == 5980403) and msg == 'canvas.todo.finish':
+        await timetable(app, s, group, member, False)
+    if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.add'):
+        await addddl(app, s, group, member, msg)
+    if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.del'):
+        await delddl(app, s, group, member, msg)
+    if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.makfin'):
+        await markfinish(app, s, group, member, msg)
 
 if __name__ == '__main__':
-    delddl()
     pass

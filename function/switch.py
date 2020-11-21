@@ -15,8 +15,12 @@ async def switch(app, group: Group, sender: Member, message: str):
     flag = permissionCheck(sender.id, group.id)
     if(msg[1] == 'bot' and flag >= 2):
         await switchMain(app, group, msg[2])
+    if(msg[1] == 'quit' and flag >= 2):
+        await app.sendGroupMessage(group, MessageChain.create([Plain('切噜走啦，拜拜！~')]))
+        await app.quit(group)
     if(msg[1] == 'pcrteam' and flag >= 1):
         await switchPcr(app, group, msg[2])
+
 
 async def switchMain(app, group: Group, switch: str):
     msg = ''
@@ -29,6 +33,7 @@ async def switchMain(app, group: Group, switch: str):
     else:
         return
     await app.sendGroupMessage(group, MessageChain(__root__=[Plain(msg)]))
+
 
 async def switchPcr(app, group: Group, switch: str):
     msg = ''
