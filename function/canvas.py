@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from urllib import parse
 
 import requests
+from bs4 import BeautifulSoup
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 from requests.sessions import Session
@@ -57,7 +58,7 @@ def createlink(qq: int) -> Session:
 
     data = {'option': 'credential', 'Ecom_User_ID': Ecom_User_ID,
             'Ecom_Password': Ecom_Password, 'Ecom_code': code}
-            
+
     s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
     s.get('http://canvas.tongji.edu.cn/login')
     return s
@@ -73,10 +74,52 @@ def is_session(s: Session, member_id: int) -> Session:
         s = createlink(member_id)
     return s
 
-# 这块好像并没有使用需求
+
+def add_person(qq_id, id, password):
+    s = requests.session()
+    s.get('https://ids.tongji.edu.cn:8443')
+    code = ''
+    with s.get('https://ids.tongji.edu.cn:8443/nidp/app/login?flag=true') as code_img:
+        code = s.post('http://172.81.215.215/pi/crack',
+                      json={'data_url': code_img.text}).json()['ans']
+
+    data = {'option': 'credential', 'Ecom_User_ID': id,
+            'Ecom_Password': password, 'Ecom_code': code}
+
+    sss = (s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)).text
+
+    if sss.find("账号状态需要更新，请先执行更新操作！") != -1:
+        raise 'error'
+
+    user_id = 0
+    soup = BeautifulSoup(
+        s.get('http://canvas.tongji.edu.cn/login').text, features="html.parser")
+    lit = soup.body['class']
+    for i in lit:
+        if i.startswith('context-user_'):
+            user_id = int(i.replace('context-user_', ''))
+
+    lit = soup.find('img')
+    name = lit['alt']
+    dit = {'name': name, 'qq': qq_id, 'id': id,
+           'password': password, 'user_id': user_id}
+
+    Localpath = './data/tongji.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+
+    data['data'].append(dit)
+
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+    pass
 
 
-def calender(member):
+def calender(member):  # 这块好像并没有使用需求
     s = createlink(member.id)
     url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events?type=assignment&context_codes%5B%5D=course_30663&context_codes%5B%5D=course_31391&start_date=2020-10-25T16%3A00%3A00.000Z&end_date=2021-02-06T16%3A00%3A00.000Z&per_page=50&context_codes%5B%5D=user_' + \
         str(get_id(member.id))
@@ -282,4 +325,5 @@ async def canvas(app, group, member, msg, s: Session):
         await markfinish(app, s, group, member, msg)
 
 if __name__ == '__main__':
+    add_person(1, 1951096, 'LAN*150019')
     pass

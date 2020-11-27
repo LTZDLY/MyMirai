@@ -7,11 +7,17 @@ from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 from graia.broadcast.interrupt.waiter import Waiter
 
-from function.mute import is_number
-
 s = requests.session()
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36'}
+
+
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        pass
 
 
 async def report(app, group, city):
@@ -99,12 +105,13 @@ async def weather(app, inc, group, member, msg: str):
             ss += '\n' + str(i) + '：' + lit[i - 1]
         await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
         # FIXME 这里尝试了最新版graia提供的interrupt功能，但我总觉得有更好的方法
+
         @Waiter.create_using_function([GroupMessage])
         async def waiter(event: GroupMessage, waiter_group: Group, waiter_member: Member, waiter_message: MessageChain):
             if waiter_group.id == group.id and waiter_member.id == member.id:
-                if is_number(waiter_message.asDisplay()):
+                if is_int(waiter_message.asDisplay()):
                     id = int(waiter_message.asDisplay()) - 1
-                    if id >= len(lit):
+                    if id >= len(lit) or id < 0:
                         await app.sendGroupMessage(group, MessageChain.create([Plain('查询被取消了切噜噜——')]))
                         return event
                     text = lit[id].split(', ')

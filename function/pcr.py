@@ -10,6 +10,12 @@ from graia.application.message.elements.internal import Plain
 
 from function.bilibili import SESSDATA, bili_jct, token
 
+uprear = 7000
+srear = 25000
+rear = 180000
+sum = 1000000
+normal = sum - rear - srear
+
 
 def short2name(data: Dict, short: str) -> str:
     for i in data["data"]:
@@ -24,7 +30,8 @@ async def dayReportCollect(app, group):
         bili_jct + '; session-api=3o2l5qds0cepbb2ks73rhn1pks'
     headers = {"cookie": cookie, "csrf_token": token, "csrf": token}
     r = requests.get(url, headers=headers)
-    life = {6000000: '1', 8000000: '2', 10000000: '3', 12000000: '4', 20000000: '5'}
+    life = {6000000: '1', 8000000: '2',
+            10000000: '3', 12000000: '4', 20000000: '5'}
     if (r.json()["code"] == 0):
         s = '公会名称：' + r.json()["data"]["clan_info"]["name"]\
             + '\n当前排名：' + str(r.json()["data"]["clan_info"]["last_ranking"])\
@@ -210,6 +217,20 @@ async def findWorkDetails(app, group, msg: str):
         await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
     pass
 
+async def expand(app, group, msg: str):
+    text = msg.split(' ')
+    if(len(text) != 2):
+        return
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    wanna = short2name(data, text[1])
+    if wanna != text[1]:
+        await app.sendGroupMessage(group, MessageChain.create([Plain(text[1] + " 可能是 " + wanna + " 的缩写")]))
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain("并未查到是什么的缩写，是本名也说不定哦！")]))
 
 async def draw(app, group, upflag=False):
     Localpath = './data/pcrcharacter.json'
@@ -218,6 +239,11 @@ async def draw(app, group, upflag=False):
     data = json.load(fr)
     fr.close()
 
+    if upflag and data["double"]:
+        global srear
+        srear = 25000 * 2
+    else:
+        srear = 25000
     star3 = []
     star2 = []
     star1 = []
@@ -230,7 +256,7 @@ async def draw(app, group, upflag=False):
     sstr = ""
 
     for i in data["data"]:
-        if upflag == True and i["up"] == 1:
+        if upflag and i["up"] == 1:
             if i["star"] == 3:
                 upstar3.append(i["name"])
             elif i["star"] == 2:
@@ -246,24 +272,24 @@ async def draw(app, group, upflag=False):
                 star1.append(i["name"])
 
     for i in range(0, 9):
-        ran = random.uniform(0, 100000)
-        if ran > 97500:
-            if upflag == True and upstar3 and ran < 98200:
+        ran = random.uniform(0, sum)
+        if ran > sum - srear:
+            if upflag == True and upstar3 and ran < sum - srear + uprear:
                 out.append('【' + random.choice(upstar3) + '】')
                 sstr = "おめでとうございます！\n"
             else:
                 out.append('【' + random.choice(star3) + '】')
             num3 += 1
-        elif ran < 79500:
+        elif ran < normal:
             out.append(random.choice(star1))
             num1 += 1
         else:
             out.append(random.choice(star2))
             num2 += 1
 
-    ran = random.uniform(0, 100000)
-    if ran > 97500:
-        if upflag == True and upstar3 and ran < 98200:
+    ran = random.uniform(0, sum)
+    if ran > sum - srear:
+        if upflag == True and upstar3 and ran < sum - srear + uprear:
             out.append(random.choice(upstar3))
             sstr = "おめでとうございます！\n"
         else:
@@ -281,6 +307,8 @@ async def draw(app, group, upflag=False):
         sstr += out[i] + ' '
     sstr += "\n3星：" + str(num3) + "    2星：" + str(num2) + "    1星：" + str(num1) + \
         "\n女神石：" + str(50 * num3 + 10 * num2 + num1) + '\n当前卡池信息：'
+    if upflag and data['double']:
+        sstr += '三星概率双倍 '
     if upflag == True and upstar3:
         for i in upstar3:
             sstr += i + ' '
@@ -300,6 +328,11 @@ async def drawauto(app, group, msg: str, upflag=False):
     fr = open(Localpath, encoding='utf-8')
     data = json.load(fr)
     fr.close()
+    if upflag and data["double"]:
+        global srear
+        srear = 25000 * 2
+    else:
+        srear = 25000
     wanna = short2name(data, text[1])
     for i in data["data"]:
         if i["name"] == wanna and (i["type"] == 0 or (upflag and i["up"] == 1)):
@@ -317,7 +350,7 @@ async def drawauto(app, group, msg: str, upflag=False):
     num1 = 0
 
     for i in data["data"]:
-        if upflag == True and i["up"] == 1:
+        if upflag and i["up"] == 1:
             if i["star"] == 3:
                 upstar3.append(i["name"])
             elif i["star"] == 2:
@@ -337,23 +370,23 @@ async def drawauto(app, group, msg: str, upflag=False):
         times += 10
         out = []
         for i in range(0, 9):
-            ran = random.uniform(0, 100000)
-            if ran > 97500:
-                if upflag == True and upstar3 and ran < 98200:
+            ran = random.uniform(0, sum)
+            if ran > sum - srear:
+                if upflag == True and upstar3 and ran < sum - srear + uprear:
                     out.append(random.choice(upstar3))
                 else:
                     out.append(random.choice(star3))
                 num3 += 1
-            elif ran < 79500:
+            elif ran < normal:
                 out.append(random.choice(star1))
                 num1 += 1
             else:
                 out.append(random.choice(star2))
                 num2 += 1
 
-        ran = random.uniform(0, 100000)
-        if ran > 97500:
-            if upflag == True and upstar3 and ran < 98200:
+        ran = random.uniform(0, sum)
+        if ran > sum - srear:
+            if upflag == True and upstar3 and ran < sum - srear + uprear:
                 out.append(random.choice(upstar3))
             else:
                 out.append(random.choice(star3))
@@ -370,6 +403,8 @@ async def drawauto(app, group, msg: str, upflag=False):
         "\n获得女神石：" + str(stone) + \
         "\n3星：" + str(num3) + "    2星：" + str(num2) + "    1星：" + str(num1) + \
         "\n当前卡池信息："
+    if upflag and data['double']:
+        s += '三星概率双倍 '
     if upflag == True and upstar3:
         for i in upstar3:
             s += i + ' '
@@ -428,6 +463,84 @@ async def offUP(app, group, msg):
         fw.close()
 
 
+async def setD(app, group):
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    data["double"] = True
+    await app.sendGroupMessage(group, MessageChain.create([Plain("将卡池设为双倍三星概率成功！")]))
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+
+
+async def offD(app, group):
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    data["double"] = False
+    await app.sendGroupMessage(group, MessageChain.create([Plain("将卡池取消双倍三星概率成功！")]))
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+
+
+async def setDefine(app, group, msg):
+    text = msg.split(' ')
+    if(len(text) != 3):
+        return
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    wanna = short2name(data, text[1])
+    for i in data["data"]:
+        if wanna == i["name"]:
+            if not text[2] in i["short"]:
+                i["short"].append(text[2])
+                await app.sendGroupMessage(group, MessageChain.create([Plain("添加缩写：" + wanna + " 缩写为 " + text[2])]))
+            break
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        return
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+
+async def offDefine(app, group, msg):
+    text = msg.split(' ')
+    if(len(text) != 3):
+        return
+    Localpath = './data/pcrcharacter.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    wanna = short2name(data, text[1])
+    for i in data["data"]:
+        if wanna == i["name"]:
+            if text[2] in i["short"]:
+                i["short"].remove(text[2])
+                await app.sendGroupMessage(group, MessageChain.create([Plain("删除缩写：" + wanna + " 缩写为 " + text[2])]))
+            else:
+                await app.sendGroupMessage(group, MessageChain.create([Plain(wanna + "没有这个缩写哦！")]))
+            break
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        return
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+
 def id2character(data: Dict, id: str) -> str:
     for i in data["data"]:
         if i["id"] == id:
@@ -454,10 +567,20 @@ async def pcrteam(app, group, msg: str):
 
 
 async def pcr(app, group, msg: str):
-    if (msg.startswith("pcr.draw.setup")):
+    if (msg.startswith("pcr.expand")):
+        await expand(app, group, msg)
+    if (msg.startswith("pcr.define")):
+        await setDefine(app, group, msg)
+    elif (msg.startswith("pcr.offdefine")):
+        await offDefine(app, group, msg)
+    elif (msg.startswith("pcr.draw.setup")):
         await setUP(app, group, msg)
     elif (msg.startswith("pcr.draw.offup")):
         await offUP(app, group, msg)
+    elif (msg.startswith("pcr.draw.setd")):
+        await setD(app, group)
+    elif (msg.startswith("pcr.draw.offd")):
+        await offD(app, group)
     elif (msg.startswith("pcr.draw.up")):
         if msg == "pcr.draw.up":
             await draw(app, group, True)

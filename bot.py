@@ -1,8 +1,8 @@
 import asyncio
 import datetime
+import json
 import operator
 import random
-from asyncio.tasks import Task, create_task
 from re import escape
 from typing import Dict, Optional
 
@@ -21,7 +21,7 @@ from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
 
 from function.bilibili import bilibili
-from function.canvas import canvas, createlink
+from function.canvas import add_person, canvas, createlink
 from function.cherugo import cheru2str, str2cheru
 from function.danmaku import danmaku, startup
 from function.image import seImage
@@ -68,69 +68,84 @@ async def friend_message_handler(app: GraiaMiraiApplication, message: MessageCha
 @bcc.receiver(TempMessage)
 async def temp_message_handler(app: GraiaMiraiApplication, message: MessageChain, sender: Member):
     message_a = MessageChain.create([
-        Plain(sender.nickname + '(' + str(sender.id) + ')' + "向您发送消息：\n")])
+        Plain(sender.name + '(' + str(sender.id) + ')' + "向您发送消息：\n")])
     message_b = message.asSendable()
     message_a.plus(message_b)
     await app.sendFriendMessage(349468958, message_a)
+
+ti = 0
 
 
 @bcc.receiver(GroupMessage)
 async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
 
     # FIXME 用户向bot提供学号和密码用于登录canvas爬取数据
-    '''
     if message.asDisplay().startswith("canvas.apply"):
-        await app.sendGroupMessage(group, MessageChain.create([
-            At(member.id), Plain("发送 /confirm 以继续运行")
-        ]))
-        id = ''
-        password = ''
+        Localpath = './data/tongji.json'
+        data = {}
+        fr = open(Localpath, encoding='utf-8')
+        data = json.load(fr)
+        fr.close()
 
-        @Waiter.create_using_function([GroupMessage])
-        def waiter(
-            event: GroupMessage, waiter_group: Group,
-            waiter_member: Member, waiter_message: MessageChain
-        ):
-            if all([
-                waiter_group.id == group.id,
-                waiter_member.id == member.id,
-                waiter_message.asDisplay() == "/confirm"
-            ]):
-                return event
-        await inc.wait(waiter)
-        await app.sendFriendMessage(member.id, MessageChain.create([
-            Plain("请输入学号.")
-        ]))
+        for i in data["data"]:
+            if i['qq'] == member.id:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    At(member.id), Plain("您已在列表当中！")
+                ]))
+                break
+        else:
+            await app.sendFriendMessage(member.id, MessageChain.create([
+                Plain("您即将向bot申请canvas爬取权限。这意味着：\n" +
+                      "您需要将自己统一身份认证的学号以及密码私聊发送至bot\n" +
+                      "我们可以保证您的学号和密码不会用于爬取canvas数据以外的地方\n" +
+                      "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
+            ]))
 
-        @Waiter.create_using_function([FriendMessage])
-        def waiter(
-            event: FriendMessage, waiter_member: Friend, waiter_message: MessageChain
-        ):
-            if all([
-                waiter_member.id == member.id,
-            ]):
-                id = waiter_message.asDisplay()
-                return event
-        await inc.wait(waiter)
-        await app.sendFriendMessage(member.id, MessageChain.create([
-            Plain("请输入密码.")
-        ]))
+            @Waiter.create_using_function([FriendMessage], block_propagation=True)
+            async def waiter(event: FriendMessage, waiter_member: Friend, waiter_message: MessageChain):
+                if waiter_member.id == member.id:
+                    if (waiter_message.asDisplay() != "/confirm"):
+                        await app.sendFriendMessage(member.id, MessageChain.create([
+                            Plain("您取消了申请.")
+                        ]))
+                        return event
+                    await app.sendFriendMessage(member.id, MessageChain.create([
+                        Plain("请输入学号.")
+                    ]))
+                    global ti
+                    ti = 0
 
-        @Waiter.create_using_function([FriendMessage])
-        def waiter(
-            event: FriendMessage, waiter_member: Friend, waiter_message: MessageChain
-        ):
-            if all([
-                waiter_member.id == member.id,
-            ]):
-                return event
-        password = message.asDisplay()
-        await inc.wait(waiter)
-        await app.sendFriendMessage(member.id, MessageChain.create([
-            Plain("学号为：" + id + "\n密码为：" + password)
-        ]))
-        return
-    '''
+                    @Waiter.create_using_function([FriendMessage], block_propagation=True)
+                    async def waiter1(event1: FriendMessage, waiter1_member: Friend, waiter1_message: MessageChain):
+                        global ti
+                        ti += 1
+                        if ti == 1 and waiter1_member.id == member.id:
+                            await app.sendFriendMessage(member.id, MessageChain.create([
+                                Plain("请输入密码.")
+                            ]))
+
+                            @Waiter.create_using_function([FriendMessage], block_propagation=True)
+                            async def waiter2(event2: FriendMessage, waiter2_member: Friend, waiter2_message: MessageChain):
+                                if waiter2_member.id == member.id:
+                                    id = waiter1_message.asDisplay()
+                                    password = waiter2_message.asDisplay()
+                                    try:
+                                        add_person(
+                                            waiter2_member.id, id, password)
+                                        await app.sendFriendMessage(member.id, MessageChain.create([
+                                            Plain("记录成功.")
+                                        ]))
+                                    except:
+                                        await app.sendFriendMessage(member.id, MessageChain.create([
+                                            Plain("记录失败，请检查学号密码是否正确.")
+                                        ]))
+                                    return event
+                            await inc.wait(waiter2)
+                            return event
+                    await inc.wait(waiter1)
+                    return event
+            await inc.wait(waiter)
+            return
 
     if (member.id != 349468958):
         msg = message.asSerializationString()
@@ -226,11 +241,12 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             await canvas(app, group, member, msg, sess[member.id])
         except:
             await app.sendGroupMessage(group, MessageChain.create([Plain(
-                '并没有记录任何学号信息，如需使用此功能请私聊向bot申请。\n注意：该功能需要用户提供统一身份认证的学号和密码以登录canvas。'
+                '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
+                '注意：在此之前请检查您是否与bot互为好友'
             )]))
 
     # TODO 天气爬取
-    if msg.startswith('weather'):
+    if msg.startswith('weather') or msg.startswith('天气'):
         await weather(app, inc, group, member, msg)
 
     # TODO 4m3和1块钱公告爬取
