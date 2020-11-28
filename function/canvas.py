@@ -161,12 +161,12 @@ async def timetable(app, s, group, member, flag=True):
             if i['planner_override'] != None and i['planner_override']['marked_complete'] != False:
                 ss += '（已标记完成）'
         elif i['context_type'] == 'Course':
-            if flag and i['submissions']['submitted'] == True:
+            if flag and 'submitted' in i and i['submissions']['submitted'] == True:
                 continue
             sstr += '\n标题：' + i['plannable']['title'] + \
                 '\n课程：' + i['context_name'] + \
                 '\nddl：' + date.strftime('%Y-%m-%d %H:%M:%S')
-            if i['submissions']['submitted'] == True:
+            if 'submitted' in i and i['submissions']['submitted'] == True:
                 sstr += '（已完成）'
     if sstr == '':
         sstr = '\n一月内的所有任务已经全部完成了呢！'
@@ -325,5 +325,4 @@ async def canvas(app, group, member, msg, s: Session):
         await markfinish(app, s, group, member, msg)
 
 if __name__ == '__main__':
-    add_person(1, 1951096, 'LAN*150019')
     pass

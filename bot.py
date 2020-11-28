@@ -101,10 +101,15 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                       "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
             ]))
 
+            global ti
+            ti = 0
             @Waiter.create_using_function([FriendMessage], block_propagation=True)
             async def waiter(event: FriendMessage, waiter_member: Friend, waiter_message: MessageChain):
+                global ti
+                if ti != 0:
+                    return event
                 if waiter_member.id == member.id:
-                    if (waiter_message.asDisplay() != "/confirm"):
+                    if waiter_message.asDisplay() != "/confirm":
                         await app.sendFriendMessage(member.id, MessageChain.create([
                             Plain("您取消了申请.")
                         ]))
@@ -112,22 +117,26 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                     await app.sendFriendMessage(member.id, MessageChain.create([
                         Plain("请输入学号.")
                     ]))
-                    global ti
-                    ti = 0
+                    ti += 1
 
                     @Waiter.create_using_function([FriendMessage], block_propagation=True)
                     async def waiter1(event1: FriendMessage, waiter1_member: Friend, waiter1_message: MessageChain):
                         global ti
-                        ti += 1
-                        if ti == 1 and waiter1_member.id == member.id:
+                        if ti != 1:
+                            return event
+                        if waiter1_member.id == member.id:
                             await app.sendFriendMessage(member.id, MessageChain.create([
                                 Plain("请输入密码.")
                             ]))
+                            ti += 1
 
                             @Waiter.create_using_function([FriendMessage], block_propagation=True)
                             async def waiter2(event2: FriendMessage, waiter2_member: Friend, waiter2_message: MessageChain):
+                                global ti
+                                if ti != 2:
+                                    return event
                                 if waiter2_member.id == member.id:
-                                    id = waiter1_message.asDisplay()
+                                    id = int(waiter1_message.asDisplay())
                                     password = waiter2_message.asDisplay()
                                     try:
                                         add_person(
