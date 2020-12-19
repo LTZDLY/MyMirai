@@ -13,14 +13,14 @@ async def printf(app, i):
 
 
 async def repeat(app):
-    group = [1138925965, 980644912, 1002841584, 372733015]
+    group = [1138925965, 980644912, 372733015, 747861591]
     h = datetime.datetime.now().hour
-    if h < 7:
-        return
     sss = ''
-    if h == 7:
+    if h == 3:
+        sss = '切噜~！现在是凌晨3点！还有许多作业需要完成，现在还不能休息哦！'
+    elif h == 7:
         asyncio.create_task(sign(app, 372733015))
-        sss = '切噜~！早上好！已经七点了，该起床咯切噜啪！'
+        sss = '切噜~！早上好！已经七点了，昨天的你是几点睡的呢！作业写完了吗！'
     elif h == 12:
         sss = '切噜~！中午好！12点到啦吃午饭了吗！'
     elif h == 13:
@@ -29,7 +29,7 @@ async def repeat(app):
         sss = '切噜~！18点啦！还有许多作业需要完成，现在还不能休息哦！'
     elif h == 23:
         asyncio.create_task(sign(app, 372733015))
-        sss = '切噜~！23点啦！到睡觉的时候咯！晚安切噜！'
+        sss = '切噜~！23点啦！还有许多作业需要完成，现在还不能休息哦！'
     if sss == '':
         return
     for i in group:

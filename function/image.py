@@ -28,6 +28,8 @@ async def seImage(app, group, msg: str):
         filePath = 'E:/Mirai/mirai/img/kyoka/'
     elif(msg.find('露娜') != -1):
         filePath = 'E:/Mirai/mirai/img/luna/'
+    elif(msg.find('栞') != -1):
+        filePath = 'E:/Mirai/mirai/img/shiori/'
     elif(msg.find('帕琪') != -1):
         filePath = 'F:/lsl/TouHou/Image/2020-帕秋莉/'
     elif(msg.find('芙兰') != -1):

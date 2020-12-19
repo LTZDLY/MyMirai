@@ -1,10 +1,21 @@
-# from function.signup import permissionCheck
 import json
 import os
 from typing import Dict
 
 from graia.application.group import Group, Member
 
+
+def inban(member: int, group: int) -> bool:
+    Localpath = './data/blacklist.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+    if 'member' in data and member in data['member']:
+        return True
+    if 'group' in data and group in data['group']:
+        return True
+    return False
 
 def loadPermission():
     Localpath = './data/data.json'
@@ -25,6 +36,7 @@ def permissionCheck(member: int, group: int) -> int:
 
     Returns:
         int:
+           -1: 在黑名单中的群员//还没写
             0: 不拥有权限的群员
             1: 具有一般权限的群员
             2: 具有高级权限的群员

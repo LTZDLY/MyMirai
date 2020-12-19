@@ -50,7 +50,6 @@ def createlink(qq: int) -> Session:
         raise 'error'
 
     s = requests.session()
-    s.get('https://ids.tongji.edu.cn:8443')
     code = ''
     with s.get('https://ids.tongji.edu.cn:8443/nidp/app/login?flag=true') as code_img:
         code = s.post('http://172.81.215.215/pi/crack',
@@ -59,8 +58,10 @@ def createlink(qq: int) -> Session:
     data = {'option': 'credential', 'Ecom_User_ID': Ecom_User_ID,
             'Ecom_Password': Ecom_Password, 'Ecom_code': code}
 
-    s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
-    s.get('http://canvas.tongji.edu.cn/login')
+    a = s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
+    print(a.text)
+    a = s.get('http://canvas.tongji.edu.cn/login')
+    print(a.text)
     return s
 
 
@@ -161,12 +162,12 @@ async def timetable(app, s, group, member, flag=True):
             if i['planner_override'] != None and i['planner_override']['marked_complete'] != False:
                 ss += '（已标记完成）'
         elif i['context_type'] == 'Course':
-            if flag and 'submitted' in i and i['submissions']['submitted'] == True:
+            if flag and 'submissions' in i and i['submissions']['submitted'] == True:
                 continue
             sstr += '\n标题：' + i['plannable']['title'] + \
                 '\n课程：' + i['context_name'] + \
                 '\nddl：' + date.strftime('%Y-%m-%d %H:%M:%S')
-            if 'submitted' in i and i['submissions']['submitted'] == True:
+            if 'submissions' in i and i['submissions']['submitted'] == True:
                 sstr += '（已完成）'
     if sstr == '':
         sstr = '\n一月内的所有任务已经全部完成了呢！'

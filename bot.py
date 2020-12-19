@@ -28,7 +28,7 @@ from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
 from function.mute import mute_member, time_to_str
 from function.pcr import pcr, pcrteam
-from function.permission import permissionCheck, setMain
+from function.permission import inban, permissionCheck, setMain
 from function.repeat import clock, repeat
 from function.signup import (atme, choice, define, loadDefine, paraphrase,
                              signup)
@@ -78,8 +78,30 @@ ti = 0
 
 @bcc.receiver(GroupMessage)
 async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
-
+    if inban(member.id, group.id):
+        return
+    permissionflag = permissionCheck(member.id, group.id)
     # FIXME 用户向bot提供学号和密码用于登录canvas爬取数据
+    if message.asDisplay() == "help":
+        sstr = "功能列表：" + \
+            "\n目前可以公开使用的模块有：" +\
+            "\n切噜：切噜语加密\\解密" +\
+            "\npcr：pcr模块" +\
+            "\npcrteam：pcr团队战模块" +\
+            "\n天气：天气模块" +\
+            "\n来点：图库模块" +\
+            "\nmute：禁言模块" +\
+            "\n不可以公开使用的模块有：" +\
+            "\nbilibili：bilibili模块" +\
+            "\ncanvas：canvas模块" +\
+            "\ndanmaku：弹幕姬模块" +\
+            "\nswitch：开关模块" +\
+            "\ndefine：转义模块" +\
+            "\ntimer：报时模块"
+        await app.sendGroupMessage(group, MessageChain.create([
+                Plain(sstr)
+            ]))
+        return
     if message.asDisplay().startswith("canvas.apply"):
         Localpath = './data/tongji.json'
         data = {}
@@ -94,12 +116,17 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 ]))
                 break
         else:
-            await app.sendFriendMessage(member.id, MessageChain.create([
-                Plain("您即将向bot申请canvas爬取权限。这意味着：\n" +
-                      "您需要将自己统一身份认证的学号以及密码私聊发送至bot\n" +
-                      "我们可以保证您的学号和密码不会用于爬取canvas数据以外的地方\n" +
-                      "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
-            ]))
+            try:
+                await app.sendFriendMessage(member.id, MessageChain.create([
+                    Plain("您即将向bot申请canvas爬取权限。这意味着：\n" +
+                        "您需要将自己统一身份认证的学号以及密码私聊发送至bot\n" +
+                        "我们可以保证您的学号和密码不会用于爬取canvas数据以外的地方\n" +
+                        "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
+                ]))
+            except:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    At(member.id), Plain("您并不是bot好友！")
+                ]))
 
             global ti
             ti = 0
@@ -184,8 +211,8 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 if msg.text == 'recall':
                     flag = permissionCheck(member.id, group.id)
                     if flag > 0:
-                        print(at.id)
                         await app.revokeMessage(at.id)
+                        await app.revokeMessage(message.__root__[0].id)
                         return
 
     msg = message.asDisplay()
@@ -241,7 +268,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸开始")]))
 
     # TODO canvas任务爬取
-    if msg.startswith('canvas'):
+    if msg.startswith('canvas.'):
         global sess
         try:
             if not member.id in sess:
@@ -271,7 +298,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     if msg == "签到":
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(signup(member.id))]))
     # print(await app.getMember(group, 1424912867))
-    if member.id == 349468958 and msg.startswith("mute"):
+    if permissionflag >= 1 and msg.startswith("mute"):
         mute_member(app, group, message)
 
     if message.asDisplay().startswith("define "):
@@ -366,12 +393,12 @@ async def bot_mute_handler(app: GraiaMiraiApplication, event: BotMuteEvent):
         return
     if event.durationSeconds < 3600:
         return
-    await app.quit(event.operator.group)
     # TODO 黑名单系统
     await app.sendGroupMessage(mygroup, MessageChain.create([Plain(
-        "在" + event.operator.group.name + '(' + str(event.group.id) + ')被' +
+        "在" + event.operator.group.name + '(' + str(event.operator.group.id) + ')被' +
         event.operator.name + '(' + str(event.operator.id) + ')禁言' + time_to_str(event.durationSeconds) +
         '，已自动从群聊中退出并将所在群和禁言人列入黑名单')]))
+    await app.quit(event.operator.group)
 
 
 @bcc.receiver(BotLeaveEventKick)
