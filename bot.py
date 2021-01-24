@@ -3,7 +3,6 @@ import datetime
 import json
 import operator
 import random
-from re import escape
 from typing import Dict, Optional
 
 from graia.application import GraiaMiraiApplication, Session
@@ -26,7 +25,9 @@ from function.cherugo import cheru2str, str2cheru
 from function.danmaku import danmaku, startup
 from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
-from function.mute import mute_member, time_to_str
+from function.latex import latex
+from function.leetcode import get_daily, get_rand
+from function.mute import mute_member, set_mute, time_to_str
 from function.pcr import pcr, pcrteam
 from function.permission import inban, permissionCheck, setMain
 from function.repeat import clock, repeat
@@ -99,8 +100,8 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             "\ndefine：转义模块" +\
             "\ntimer：报时模块"
         await app.sendGroupMessage(group, MessageChain.create([
-                Plain(sstr)
-            ]))
+            Plain(sstr)
+        ]))
         return
     if message.asDisplay().startswith("canvas.apply"):
         Localpath = './data/tongji.json'
@@ -119,9 +120,9 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             try:
                 await app.sendFriendMessage(member.id, MessageChain.create([
                     Plain("您即将向bot申请canvas爬取权限。这意味着：\n" +
-                        "您需要将自己统一身份认证的学号以及密码私聊发送至bot\n" +
-                        "我们可以保证您的学号和密码不会用于爬取canvas数据以外的地方\n" +
-                        "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
+                          "您需要将自己统一身份认证的学号以及密码私聊发送至bot\n" +
+                          "我们可以保证您的学号和密码不会用于爬取canvas数据以外的地方\n" +
+                          "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
                 ]))
             except:
                 await app.sendGroupMessage(group, MessageChain.create([
@@ -130,6 +131,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
 
             global ti
             ti = 0
+
             @Waiter.create_using_function([FriendMessage], block_propagation=True)
             async def waiter(event: FriendMessage, waiter_member: Friend, waiter_message: MessageChain):
                 global ti
@@ -190,6 +192,9 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 Plain("消息监听：\n" + member.name + '(' + str(member.id) + ")在" + group.name + '(' + str(group.id) + ")中可能提到了我：\n")])
             message_b = message.asSendable()
             message_a.plus(message_b)
+            for i in range(0,len(message_a.__root__)):
+                if message_a.__root__[i].type == 'At':
+                    message_a.__root__[i] = Plain(message_a.__root__[i].display)
             await app.sendGroupMessage(mygroup, message_a)
 
     if member.id == 349468958 and message.asDisplay().startswith("bilibili"):
@@ -202,8 +207,6 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         return
     if message.has(Quote):
         for at in message.get(Quote):
-            if at.senderId != app.connect_info.account:
-                break
             for msg in message.get(Plain):
                 msg.text = msg.text.replace(' ', '')
                 if msg.text == '':
@@ -234,8 +237,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         await setMain(app, member, group, msgs)
 
     if (message.asDisplay() == '?' or message.asDisplay() == '？' or
-        message.asDisplay() == '草' or message.asDisplay() == '艹' or
-            message.asDisplay() == '[图片]'):
+        message.asDisplay() == '草' or message.asDisplay() == '艹'):
         flag = random.randint(0, 99)
         num = random.randint(5, 94)
         if(abs(flag - num) <= 5):
@@ -282,7 +284,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             )]))
 
     # TODO 天气爬取
-    if msg.startswith('weather') or msg.startswith('天气'):
+    if msg.split(' ')[0].endswith('天气'):
         await weather(app, inc, group, member, msg)
 
     # TODO 4m3和1块钱公告爬取
@@ -295,11 +297,19 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         else:
             await app.sendGroupMessage(group, MessageChain.create([At(349468958), Plain("你并没有在视奸")]))
 
+    # TODO leetcode爬取
+    if msg == "leetcode.daily":
+        await get_daily(app, group)
+    if msg == "leetcode.rand":
+        await get_rand(app, group)
     if msg == "签到":
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain(signup(member.id))]))
     # print(await app.getMember(group, 1424912867))
     if permissionflag >= 1 and msg.startswith("mute"):
         mute_member(app, group, message)
+
+    if msg.startswith("latex "):
+        await latex(app, group, msg)
 
     if message.asDisplay().startswith("define "):
         if(permissionCheck(member.id, group.id) == 3):
@@ -340,7 +350,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         s = s.replace("选择 ", '', 1)
         msg = choice(s)
         await app.sendGroupMessage(group, MessageChain.fromSerializationString(msg))
-    if msg == "/生日快乐":
+    if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:
         await app.sendGroupMessage(group, MessageChain(__root__=[Plain('禁止/生日快乐')]))
     if msg.startswith("echo ") and msg != "echo ":
         message_a = message
@@ -356,6 +366,11 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 flag = 1
         if flag == 0:
             return
+        if message.asDisplay().find("/生日快乐") != -1:
+            try:
+                await set_mute(app, group, [member.id], 600)
+            except:
+                pass 
         await app.sendGroupMessage(group, message.asSendable())
 
 
@@ -391,7 +406,7 @@ async def member_mute_handler(app: GraiaMiraiApplication, event: MemberUnmuteEve
 async def bot_mute_handler(app: GraiaMiraiApplication, event: BotMuteEvent):
     if event.operator.id == 349468958:
         return
-    if event.durationSeconds < 3600:
+    if event.durationSeconds <= 3600:
         return
     # TODO 黑名单系统
     await app.sendGroupMessage(mygroup, MessageChain.create([Plain(

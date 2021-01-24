@@ -20,6 +20,41 @@ def is_int(s):
         pass
 
 
+async def reporttomorrow(app, group, city, day):
+    ss = ''
+    if(city[0] == city[1]):
+        ss += city[1] + ' ' + city[2]
+    else:
+        ss += city[0] + ' ' + city[1] + ' ' + city[2]
+
+    url = 'https://wis.qq.com/weather/common?source=pc&weather_type=observe%7Cforecast_1h%7Cforecast_24h%7Cindex%7Calarm%7Climit%7Ctips%7Crise' + \
+        '&province=' + city[0] + '&city=' + city[1] + '&county=' + city[2]
+    data = s.get(url, headers=headers).json()
+
+    daily = data['data']['forecast_24h'][str(day)]
+    ss += '\n' + daily["time"]
+    ss += '\n天气: ' + daily['min_degree'] + '°~' + daily['max_degree'] + '°'
+    if daily['day_weather'] == daily['night_weather']:
+        ss += ' ' + daily['day_weather']
+    else:
+        ss += ' ' + daily['day_weather'] + \
+            '转' + daily['night_weather']
+    if daily['day_wind_direction'] == daily['night_wind_direction']:
+        ss += ' ' + daily['day_wind_direction']
+    else:
+        ss += ' ' + daily['day_wind_direction'] + \
+            '转' + daily['night_wind_direction']
+    if daily['day_wind_power'] == daily['night_wind_power']:
+        ss += ' ' + daily['day_wind_power'] + '级'
+    else:
+        ss += ' ' + daily['day_wind_power'] + \
+            '到' + daily['night_wind_power'] + '级'
+
+    ss += '\n数据来源: 腾讯天气'
+    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+    pass
+
+
 async def report(app, group, city):
     ss = ''
     if(city[0] == city[1]):
@@ -32,6 +67,7 @@ async def report(app, group, city):
     data = s.get(url, headers=headers).json()
 
     daily = data['data']['forecast_24h']['1']
+    ss += '\n' + daily["time"]
     ss += '\n今日天气: ' + daily['min_degree'] + '°~' + daily['max_degree'] + '°'
     if daily['day_weather'] == daily['night_weather']:
         ss += ' ' + daily['day_weather']
@@ -56,8 +92,17 @@ async def report(app, group, city):
     air = s.get(url, headers=headers).json()
 
     now = data['data']['observe']
-    ss += '\n当前天气: ' + now['degree'] + '° ' + now['weather'] + \
-        '\n空气质量指数: ' + str(air['data']['air']['aqi']) + ' ' + air['data']['air']['aqi_name'] + \
+    ss += '\n当前天气: ' + now['degree'] + '° ' + now['weather']
+    if 'alarm' in data['data']:
+        l = []
+        for i in data['data']['alarm'].values():
+            al = i['type_name'] + i['level_name'] + '预警'
+            if not al in l:
+                l.append(al)
+        for i in l:
+            ss += '\n' + i
+            
+    ss += '\n空气质量指数: ' + str(air['data']['air']['aqi']) + ' ' + air['data']['air']['aqi_name'] + \
         '\n' + wind_direction[now['wind_direction']] + ': ' + now['wind_power'] + '级' +\
         '   湿度: ' + now['humidity'] + '%   气压: ' + now['pressure'] + 'hPa'
     tips = list(data['data']['tips']['observe'].values())
@@ -117,7 +162,19 @@ async def weather(app, inc, group, member, msg: str):
                     text = lit[id].split(', ')
                     if len(text) == 2:
                         text.append('')
-                    await report(app, group, text)
+                    if msg.startswith("天气") or msg.startswith("今日天气") or msg.startswith("1日天气"):
+                        await report(app, group, text)
+                    elif msg.startswith("昨日天气"):
+                        await reporttomorrow(app, group, text, 0)
+                    elif msg.startswith("明日天气"):
+                        await reporttomorrow(app, group, text, 2)
+                    elif msg.startswith("后日天气"):
+                        await reporttomorrow(app, group, text, 3)
+                    elif is_int(msg[0]):
+                        day = int(msg[0])
+                        if day < 0 or day > 7:
+                            return
+                        await reporttomorrow(app, group, text, day)
                 else:
                     await app.sendGroupMessage(group, MessageChain.create([Plain('查询被取消了切噜噜——')]))
                 return event
@@ -127,4 +184,16 @@ async def weather(app, inc, group, member, msg: str):
         text = lit[0].split(', ')
         if len(text) == 2:
             text.append('')
-        await report(app, group, text)
+        if msg.startswith("天气") or msg.startswith("今日天气") or msg.startswith("1日天气"):
+            await report(app, group, text)
+        elif msg.startswith("昨日天气"):
+            await reporttomorrow(app, group, text, 0)
+        elif msg.startswith("明日天气"):
+            await reporttomorrow(app, group, text, 2)
+        elif msg.startswith("后日天气"):
+            await reporttomorrow(app, group, text, 3)
+        elif is_int(msg[0]):
+            day = int(msg[0])
+            if day < 0 or day > 7:
+                return
+            await reporttomorrow(app, group, text, day)

@@ -1,12 +1,10 @@
-from typing import Dict
-
 import requests
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 
-token = "8b9a518db5b1c0d6459d9d474a231c25"
-SESSDATA = "2c020e12%2C1618843162%2C303dc*a1"
-bili_jct = "8b9a518db5b1c0d6459d9d474a231c25"
+token = "af0d842e99dcfd96ddc481593c1fd172"
+SESSDATA = "0657b11a%2C1626102289%2Ce4a13*11"
+bili_jct = "af0d842e99dcfd96ddc481593c1fd172"
 cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + bili_jct
 
 
@@ -75,8 +73,4 @@ async def bilibili(app, group, msg: str):
         await end(app, group)
     elif (msg.startswith("bilibili.change")):
         await change(app, group, msg)
-
-
-
-if __name__ == '__main__':
-    pass
+        

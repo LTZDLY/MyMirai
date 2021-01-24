@@ -58,10 +58,8 @@ def createlink(qq: int) -> Session:
     data = {'option': 'credential', 'Ecom_User_ID': Ecom_User_ID,
             'Ecom_Password': Ecom_Password, 'Ecom_code': code}
 
-    a = s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
-    print(a.text)
-    a = s.get('http://canvas.tongji.edu.cn/login')
-    print(a.text)
+    s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
+    s.get('http://canvas.tongji.edu.cn/login')
     return s
 
 
@@ -70,8 +68,9 @@ def is_session(s: Session, member_id: int) -> Session:
         datetime.now().strftime('%Y-%m-%d')
     r = s.get(url)
     data = json.loads(r.text.replace('while(1);', ''))
-    if 'error' in data:
+    if 'error' in data or r.status_code == 401:
         print("检测到canvas登录状态丢失，现尝试重新登录canvas")
+        s.close()
         s = createlink(member_id)
     return s
 
@@ -162,13 +161,17 @@ async def timetable(app, s, group, member, flag=True):
             if i['planner_override'] != None and i['planner_override']['marked_complete'] != False:
                 ss += '（已标记完成）'
         elif i['context_type'] == 'Course':
-            if flag and 'submissions' in i and i['submissions']['submitted'] == True:
-                continue
+            if flag and 'submissions' in i:
+                sub = i['submissions']
+                if (type(sub) == bool and sub == True) or (type(sub) == dict and sub['submitted'] == True):
+                    continue
             sstr += '\n标题：' + i['plannable']['title'] + \
                 '\n课程：' + i['context_name'] + \
                 '\nddl：' + date.strftime('%Y-%m-%d %H:%M:%S')
-            if 'submissions' in i and i['submissions']['submitted'] == True:
-                sstr += '（已完成）'
+            if 'submissions' in i:
+                sub = i['submissions']
+                if (type(sub) == bool and sub == True) or (type(sub) == dict and sub['submitted'] == True):
+                    sstr += '（已完成）'
     if sstr == '':
         sstr = '\n一月内的所有任务已经全部完成了呢！'
     if ss == '':
@@ -324,6 +327,3 @@ async def canvas(app, group, member, msg, s: Session):
         await delddl(app, s, group, member, msg)
     if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.makfin'):
         await markfinish(app, s, group, member, msg)
-
-if __name__ == '__main__':
-    pass

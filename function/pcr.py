@@ -348,7 +348,7 @@ async def drawauto(app, group, msg: str, upflag=False):
     num3 = 0
     num2 = 0
     num1 = 0
-
+    star3get = {}
     for i in data["data"]:
         if upflag and i["up"] == 1:
             if i["star"] == 3:
@@ -366,6 +366,7 @@ async def drawauto(app, group, msg: str, upflag=False):
                 star1.append(i["name"])
     stone = 0
     times = 0
+    crt = ""
     while True:
         times += 10
         out = []
@@ -373,10 +374,15 @@ async def drawauto(app, group, msg: str, upflag=False):
             ran = random.uniform(0, sum)
             if ran > sum - srear:
                 if upflag == True and upstar3 and ran < sum - srear + uprear:
-                    out.append(random.choice(upstar3))
+                    crt = random.choice(upstar3)
+                    out.append(crt)
                 else:
-                    out.append(random.choice(star3))
+                    crt = random.choice(star3)
+                    out.append(crt)
                 num3 += 1
+                if not crt in star3get:
+                    star3get[crt] = 1
+                else: star3get[crt] += 1
             elif ran < normal:
                 out.append(random.choice(star1))
                 num1 += 1
@@ -387,10 +393,15 @@ async def drawauto(app, group, msg: str, upflag=False):
         ran = random.uniform(0, sum)
         if ran > sum - srear:
             if upflag == True and upstar3 and ran < sum - srear + uprear:
-                out.append(random.choice(upstar3))
+                crt = random.choice(upstar3)
+                out.append(crt)
             else:
-                out.append(random.choice(star3))
+                crt = random.choice(star3)
+                out.append(crt)
             num3 += 1
+            if not crt in star3get:
+                star3get[crt] = 1
+            else: star3get[crt] += 1
         else:
             out.append(random.choice(star2))
             num2 += 1
@@ -398,6 +409,7 @@ async def drawauto(app, group, msg: str, upflag=False):
             break
     stone += 50 * num3 + 10 * num2 + num1
     s = "おめでとうございます！" + \
+        "\n" + wanna + " 抽出来啦！" + \
         "\n消耗石头：" + str(times * 150) + \
         "\n抽卡次数：" + str(times) + \
         "\n获得女神石：" + str(stone) + \
@@ -411,6 +423,12 @@ async def drawauto(app, group, msg: str, upflag=False):
         s += 'UP池'
     else:
         s += "白金标准池"
+    s += "\n三星出货信息："
+    if num3 == 0:
+        s += "\n无"
+    else:
+        for c in star3get:
+            s += "\n" + c + "：" + str(star3get[c])
     await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
     pass
 
