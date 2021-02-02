@@ -317,13 +317,13 @@ def markunfinsh():
 
 async def canvas(app, group, member, msg, s: Session):
     s = is_session(s, member.id)
-    if (member.id == 349468958 or member.id == 5980403) and msg == 'canvas.todo':
+    if msg == 'canvas.todo':
         await timetable(app, s, group, member)
-    if (member.id == 349468958 or member.id == 5980403) and msg == 'canvas.todo.finish':
+    if msg == 'canvas.todo.finish':
         await timetable(app, s, group, member, False)
-    if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.add'):
+    if msg.startswith('canvas.todo.add'):
         await addddl(app, s, group, member, msg)
-    if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.del'):
+    if msg.startswith('canvas.todo.del'):
         await delddl(app, s, group, member, msg)
-    if (member.id == 349468958 or member.id == 5980403) and msg.startswith('canvas.todo.makfin'):
+    if msg.startswith('canvas.todo.makfin'):
         await markfinish(app, s, group, member, msg)

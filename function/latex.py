@@ -1,7 +1,7 @@
+from urllib import parse
+
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Image, Plain
-import requests
-from urllib import parse
 
 
 async def latex(app, group, s: str):

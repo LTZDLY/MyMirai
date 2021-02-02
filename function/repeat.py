@@ -1,15 +1,9 @@
 import asyncio
 import datetime
-from datetime import date
 from function.bilibili import sign
 
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
-
-
-async def printf(app, i):
-    # await app.sendFriendMessage(349468958, MessageChain.create([Plain(str(i))]))
-    print(datetime.datetime.now())
 
 
 async def repeat(app):
@@ -35,7 +29,7 @@ async def repeat(app):
         sss = '切噜~！早上好！已经七点了！该起床咯噜！'
         '''
     elif h == 3:
-        # sss = '切噜~！现在是凌晨3点！还有许多作业需要完成，现在还不能休息哦！'
+        sss = '切噜~！现在是凌晨3点！还有许多作业需要完成，现在还不能休息哦！'
         '''
     elif h == 12:
         sss = '切噜~！中午好！12点到啦吃午饭了吗！'

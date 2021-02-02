@@ -245,9 +245,11 @@ async def get_daily(app, group):
         "\n翻译：" + tran +\
         "\n难度：" + dif +\
         "\n通过率：" + '{:.2%}'.format(int(data['stat']['total_acs'])/int(data['stat']['total_submitted'])) +\
-        "\n地址：" + 'https://leetcode-cn.com/problems/' + data['stat']['question__title_slug']
+        "\n地址：" + 'https://leetcode-cn.com/problems/' + \
+        data['stat']['question__title_slug']
 
     await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+
 
 async def get_rand(app, group):
     url = "https://leetcode-cn.com/api/problems/all/"
@@ -271,8 +273,34 @@ async def get_rand(app, group):
         "\n翻译：" + tran +\
         "\n难度：" + dif +\
         "\n通过率：" + '{:.2%}'.format(int(d['stat']['total_acs'])/int(d['stat']['total_submitted'])) +\
-        "\n地址：" + 'https://leetcode-cn.com/problems/' + d['stat']['question__title_slug']
+        "\n地址：" + 'https://leetcode-cn.com/problems/' + \
+        d['stat']['question__title_slug']
 
+    await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+
+
+async def luogu_rand(app, group):
+    url = 'https://www.luogu.com.cn/problem/list?_contentOnly=1'
+    headers = {
+        'user-Agent': user_agent
+    }
+    data = requests.get(url, headers=headers).json()
+    print(data)
+    page = int(data['currentData']['problems']['count'] /
+               data['currentData']['problems']['perPage'])
+    p = random.randint(0, page + 1)
+    url = 'https://www.luogu.com.cn/problem/list?_contentOnly=1&page=%d' % p
+    data = requests.get(url, headers=headers).json()
+    d = random.choice(data['currentData']['problems']['result'])
+    print(d)
+    dif = d['difficulty']
+    l = ['暂无评定','入门','普及-','普及/提高-','普及+/提高','提高+/省选-','省选/NOI-','NOI/NOI+/CTSC']
+    s = "luogu 随机一题" +\
+        "\n题号：" + d['pid'] +\
+        "\n标题：" + d['title'] +\
+        "\n难度：" + l[dif] +\
+        "\n通过率：" + '{:.2%}'.format(int(d['totalAccepted'])/int(d['totalSubmit'])) +\
+        "\n地址：" + 'https://www.luogu.com.cn/problem/' + d['pid']
     await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
 
 # print(get_question_by_id('1'))
