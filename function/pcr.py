@@ -149,7 +149,7 @@ async def findWork(app, group, msg: str):
     page = ran[0] // 25
     ran[0] = ran[0] % 25
     ran[1] = ran[1] % 25
-    url = "https://www.bigfun.cn/api/feweb?target=get-gzlj-team-war-work-list%2Fa&type=2&battle_id=5&order=1&page=" + \
+    url = "https://www.bigfun.cn/api/feweb?target=get-gzlj-team-war-work-list%2Fa&type=2&battle_id=8&order=1&page=" + \
         str(page) + "&boss_position=" + title
     r = requests.get(url)
 

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import random
+import re
 
 from graia.application import GraiaMiraiApplication, Session
 from graia.application.entry import (BotMuteEvent, FriendMessage, GroupMessage,
@@ -19,7 +20,7 @@ from graia.broadcast.interrupt.waiter import Waiter
 from function.bilibili import bilibili
 from function.canvas import add_person, canvas, createlink
 from function.cherugo import cheru2str, str2cheru
-from function.danmaku import danmaku, startup
+from function.danmaku import get_info, livewrite, entrence
 from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
 from function.latex import latex
@@ -57,6 +58,8 @@ hostqq = 349468958
 
 @bcc.receiver(FriendMessage)
 async def friend_message_handler(app: GraiaMiraiApplication, message: MessageChain, friend: Friend):
+    if message.asDisplay() == "切噜":
+        await app.sendFriendMessage(friend, MessageChain.create([Plain('切噜~♪')]))
     if (friend.id != hostqq):
         message_a = MessageChain.create([
             Plain('%s(%d)向您发送消息：\n' % (friend.nickname, friend.id))])
@@ -92,6 +95,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             "\n天气：天气模块" +\
             "\n来点：图库模块" +\
             "\nmute：禁言模块" +\
+            "\n订阅直播：b站直播间订阅模块" +\
             "\n不可以公开使用的模块有：" +\
             "\nbilibili：bilibili模块" +\
             "\ncanvas：canvas模块" +\
@@ -262,15 +266,32 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     # TODO 实装TouHouRoll机
 
     # FIXME 直播间开播提示而不是弹幕姬
-    if member.id == hostqq and msg.startswith("danmaku "):
-        roomid = msg.replace("danmaku ", '')
+    if msg.startswith("订阅直播 "):
+        room_id = msg.replace("订阅直播 ", '')
         global a
-        if (group.id, member.id) in a:
-            await app.sendGroupMessage(group, MessageChain.create([Plain("你在群里已经有一个正在视奸的直播啦")]))
+
+        Localpath = './data/live.json'
+        data = {}
+        fr = open(Localpath, encoding='utf-8')
+        data = json.load(fr)
+        fr.close()
+
+        for i in data['data']:
+            if room_id == str(i['room_id']):
+                if group.id in i['group']:
+                    await app.sendGroupMessage(group, MessageChain.create([Plain("这个直播已经在被视奸啦！")]))
+                    break
         else:
-            a[group.id, member.id] = asyncio.create_task(
-                startup(app, group, roomid))
-            await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸开始")]))
+            try:
+                if not room_id in a:
+                    a[room_id] = asyncio.create_task(
+                        entrence(app, room_id))
+                info = get_info(room_id)
+                await app.sendGroupMessage(group, MessageChain.create([Plain("开启对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
+                livewrite(group.id, int(room_id))
+            except:
+                await app.sendGroupMessage(group, MessageChain.create([Plain("开启直播视奸失败，请检查房间号")]))
+                del a[room_id]
 
     # TODO canvas任务爬取
     if msg.startswith('canvas.'):
@@ -322,15 +343,15 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
 
     if msg == "切噜":
         await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
-    if msg.startswith("切噜 "):
-        s = msg.replace("切噜 ", '', 1)
+    if msg.startswith("切噜语加密 "):
+        s = msg.replace("切噜语加密 ", '', 1)
         if len(s) > 500:
             msg = '切、切噜太长切不动勒切噜噜...'
         else:
             msg = '切噜~♪' + str2cheru(s)
         await app.sendGroupMessage(group, MessageChain.create([Plain(msg)]))
-    elif msg.startswith("切噜~♪"):
-        s = msg.replace("切噜~♪", '', 1)
+    elif msg.startswith("切噜语解密"):
+        s = msg.replace("切噜语解密 切噜~♪", '', 1)
         if s == '':
             return
         msg = cheru2str(s)
@@ -378,6 +399,11 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             except:
                 pass
         await app.sendGroupMessage(group, message.asSendable())
+    if message.asDisplay() == "":
+        await app.sendGroupMessage(group, MessageChain.create([At()][Plain("")]))
+    pattern = re.compile(r'异.*世.*相.*遇.*尽.*享.*美.*味.*')
+    if pattern.search(message.asDisplay()) != None:
+        await app.sendGroupMessage(group, MessageChain.create([Plain("来一份二刺猿桶")]))
 
 
 @bcc.receiver(MemberMuteEvent)
@@ -438,6 +464,17 @@ async def bot_kicked_hanler(app: GraiaMiraiApplication, event: BotLeaveEventKick
 async def repeattt(app: GraiaMiraiApplication):
     # TODO 实装整点报时之类的功能
     asyncio.create_task(clock(app))
+    global a
+
+    Localpath = './data/live.json'
+    data = {}
+    fr = open(Localpath, encoding='utf-8')
+    data = json.load(fr)
+    fr.close()
+
+    for i in data["data"]:
+        a[str(i['room_id'])] = asyncio.create_task(
+            entrence(app, str(i['room_id'])))
     pass
 
 app.launch_blocking()

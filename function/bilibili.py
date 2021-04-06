@@ -7,6 +7,21 @@ SESSDATA = "0657b11a%2C1626102289%2Ce4a13*11"
 bili_jct = "af0d842e99dcfd96ddc481593c1fd172"
 cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + bili_jct
 
+table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
+tr = {}
+for i in range(58):
+    tr[table[i]] = i
+s = [11, 10, 3, 8, 4, 6]
+xor = 177451812
+add = 8728348608
+
+
+def dec(x):
+    r = 0
+    for i in range(6):
+        r += tr[x[s[i]]]*58**i
+    return (r-add) ^ xor
+
 
 async def sign(app, group):
     url = "https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign"
@@ -64,6 +79,28 @@ async def change(app, group, msg: str):
     else:
         await app.sendGroupMessage(group, MessageChain.create([Plain("直播间标题更改失败，可能是cookie过期")]))
 
+
+async def triple(app, group, msg: str):
+    text = msg.split(' ')
+    if(len(text) < 2):
+        return
+    av = 0
+    if text[1].startswith("av"):
+        av = text[1].replace("av", "")
+    elif text[1].startswith("AV"):
+        av = text[1].replace("AV", "")
+    elif text[1].startswith("BV") or text[1].startswith("bv"):
+        av = dec(text[1])
+
+    url = " https://api.bilibili.com/x/web-interface/archive/like/triple"
+    headers = {"cookie": cookie}
+    data = {"csrf": token, "aid": av}
+    r = requests.post(url, data, headers=headers)
+    if (r.json()["code"] == 0):
+        await app.sendGroupMessage(group, MessageChain.create([Plain("三连成功！")]))
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
+
 async def bilibili(app, group, msg: str):
     if (msg == "bilibili.signup"):
         await sign(app, group)
@@ -73,4 +110,5 @@ async def bilibili(app, group, msg: str):
         await end(app, group)
     elif (msg.startswith("bilibili.change")):
         await change(app, group, msg)
-        
+    elif (msg.startswith("bilibili.triple")):
+        await triple(app, group, msg)
