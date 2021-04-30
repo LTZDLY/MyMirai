@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 import random
 import re
 
@@ -12,7 +13,7 @@ from graia.application.event.mirai import BotLeaveEventKick
 from graia.application.friend import Friend
 from graia.application.group import Group, Member
 from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import At, Image, Plain, Quote
+from graia.application.message.elements.internal import At, Image, Plain, Quote, Voice, Voice_LocalFile
 from graia.broadcast import Broadcast
 from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
@@ -35,7 +36,7 @@ from function.signup import (atme, choice, define, loadDefine, paraphrase,
 from function.switch import switch
 from function.weather import weather
 
-a = {}
+live = {}
 sess = {}
 
 loop = asyncio.get_event_loop()
@@ -85,6 +86,38 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     if inban(member.id, group.id):
         return
     permissionflag = permissionCheck(member.id, group.id)
+    
+    if (member.id != hostqq):
+        msg = message.asSerializationString()
+        if(atme(msg)):
+            message_a = MessageChain.create([
+                Plain("消息监听：\n%s(%d)在%s(%d)中可能提到了我：\n" % (member.name, member.id, group.name, group.id))])
+            message_b = message.asSendable()
+            message_a.plus(message_b)
+            for i in range(0, len(message_a.__root__)):
+                if message_a.__root__[i].type == 'At':
+                    message_a.__root__[i] = Plain(
+                        '@' + str(message_a.__root__[i].target))
+            await app.sendGroupMessage(mygroup, message_a)
+
+    if message.asDisplay().startswith("switch "):
+        await switch(app, group, member, message.asDisplay())
+
+    if (int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0):
+        return
+    if message.has(Quote):
+        for at in message.get(Quote):
+            for msg in message.get(Plain):
+                msg.text = msg.text.replace(' ', '')
+                if msg.text == '':
+                    continue
+                if msg.text == 'recall':
+                    flag = permissionCheck(member.id, group.id)
+                    if flag > 0:
+                        await app.revokeMessage(at.id)
+                        await app.revokeMessage(message.__root__[0].id)
+                        return
+                        
     # FIXME 用户向bot提供学号和密码用于登录canvas爬取数据
     if message.asDisplay() == "help":
         sstr = "功能列表：" + \
@@ -189,41 +222,12 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             await inc.wait(waiter)
             return
 
-    if (member.id != hostqq):
-        msg = message.asSerializationString()
-        if(atme(msg)):
-            message_a = MessageChain.create([
-                Plain("消息监听：\n%s(%d)在%s(%d)中可能提到了我：\n" % (member.name, member.id, group.name, group.id))])
-            message_b = message.asSendable()
-            message_a.plus(message_b)
-            for i in range(0, len(message_a.__root__)):
-                if message_a.__root__[i].type == 'At':
-                    message_a.__root__[i] = Plain(
-                        message_a.__root__[i].display)
-            await app.sendGroupMessage(mygroup, message_a)
 
     # TODO thunder模块移植并投入使用
 
     if member.id == hostqq and message.asDisplay().startswith("bilibili"):
         await bilibili(app, group, message.asDisplay())
 
-    if message.asDisplay().startswith("switch "):
-        await switch(app, group, member, message.asDisplay())
-
-    if (int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0):
-        return
-    if message.has(Quote):
-        for at in message.get(Quote):
-            for msg in message.get(Plain):
-                msg.text = msg.text.replace(' ', '')
-                if msg.text == '':
-                    continue
-                if msg.text == 'recall':
-                    flag = permissionCheck(member.id, group.id)
-                    if flag > 0:
-                        await app.revokeMessage(at.id)
-                        await app.revokeMessage(message.__root__[0].id)
-                        return
 
     msg = message.asDisplay()
     data = loadDefine()
@@ -266,9 +270,9 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     # TODO 实装TouHouRoll机
 
     # FIXME 直播间开播提示而不是弹幕姬
+    global live
     if msg.startswith("订阅直播 "):
         room_id = msg.replace("订阅直播 ", '')
-        global a
 
         Localpath = './data/live.json'
         data = {}
@@ -283,15 +287,42 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                     break
         else:
             try:
-                if not room_id in a:
-                    a[room_id] = asyncio.create_task(
+                if not room_id in live:
+                    live[room_id] = asyncio.create_task(
                         entrence(app, room_id))
                 info = get_info(room_id)
                 await app.sendGroupMessage(group, MessageChain.create([Plain("开启对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
                 livewrite(group.id, int(room_id))
             except:
                 await app.sendGroupMessage(group, MessageChain.create([Plain("开启直播视奸失败，请检查房间号")]))
-                del a[room_id]
+                del live[room_id]
+
+    if msg.startswith('取消订阅 '):
+        room_id = msg.replace("取消订阅 ", '')
+
+        Localpath = './data/live.json'
+        data = {}
+        fr = open(Localpath, encoding='utf-8')
+        data = json.load(fr)
+        fr.close()
+
+        for i in data['data']:
+            if room_id == str(i['room_id']):
+                if group.id in i['group']:
+                    if(len(i['group']) > 1):
+                        i['group'].remove(group.id)
+                    else:
+                        data['data'].remove(i)
+                        live[room_id].cancel()
+                        del live[room_id]
+                    with open(Localpath, "w") as fw:
+                        jsObj = json.dumps(data)
+                        fw.write(jsObj)
+                        fw.close()
+                    pass
+                    info = get_info(room_id)
+                    await app.sendGroupMessage(group, MessageChain.create([Plain("关闭对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
+                    break
 
     # TODO canvas任务爬取
     if msg.startswith('canvas.'):
@@ -314,7 +345,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     # TODO 4m3和1块钱公告爬取
 
     if member.id == hostqq and msg.startswith("danmaku.end"):
-        t = a.get((group.id, member.id), None)
+        t = live.get((group.id, member.id), None)
         if t:
             t.cancel()
             await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸停止")]))
@@ -322,6 +353,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             await app.sendGroupMessage(group, MessageChain.create([At(hostqq), Plain("你并没有在视奸")]))
 
     # TODO leetcode爬取
+    # FIXME leetcode每日题库好像有点问题记得修
     if msg == "leetcode.daily":
         await get_daily(app, group)
     if msg == "leetcode.rand":
@@ -343,6 +375,11 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
 
     if msg == "切噜":
         await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
+        
+        # 此处发语音功能限定文件格式为silk，并且对框架具有一定版本要求，并且音质贼差
+        file = 'F:\\silk2mp3\\Vo_btl_110901_ub_200.silk'
+        await app.sendGroupMessage(group, MessageChain.create([Voice.fromLocalFile(0,filepath=file)]))
+
     if msg.startswith("切噜语加密 "):
         s = msg.replace("切噜语加密 ", '', 1)
         if len(s) > 500:
@@ -399,8 +436,6 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             except:
                 pass
         await app.sendGroupMessage(group, message.asSendable())
-    if message.asDisplay() == "":
-        await app.sendGroupMessage(group, MessageChain.create([At()][Plain("")]))
     pattern = re.compile(r'异.*世.*相.*遇.*尽.*享.*美.*味.*')
     if pattern.search(message.asDisplay()) != None:
         await app.sendGroupMessage(group, MessageChain.create([Plain("来一份二刺猿桶")]))
@@ -464,8 +499,8 @@ async def bot_kicked_hanler(app: GraiaMiraiApplication, event: BotLeaveEventKick
 async def repeattt(app: GraiaMiraiApplication):
     # TODO 实装整点报时之类的功能
     asyncio.create_task(clock(app))
-    global a
-
+    
+    global live
     Localpath = './data/live.json'
     data = {}
     fr = open(Localpath, encoding='utf-8')
@@ -473,8 +508,7 @@ async def repeattt(app: GraiaMiraiApplication):
     fr.close()
 
     for i in data["data"]:
-        a[str(i['room_id'])] = asyncio.create_task(
+        live[str(i['room_id'])] = asyncio.create_task(
             entrence(app, str(i['room_id'])))
-    pass
 
 app.launch_blocking()

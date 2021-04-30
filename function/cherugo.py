@@ -64,7 +64,7 @@ def cheru2str(c: str) -> str:
         ss = '的切噜噜是：\n' + \
             rex_cheru_word.sub(lambda w: cheru2word(w.group()), c)
     except ValueError as e:
-        ss = repr(e)
+        ss = str(e)
     return ss
 
 

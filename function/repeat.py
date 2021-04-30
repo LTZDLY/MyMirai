@@ -13,7 +13,7 @@ async def repeat(app):
     d = t.day
     m = t.month
     sss = ''
-    if (d == 0 and m == 0) or (m == 2 and d == 12):
+    if (d == 1 and m == 1) or (m == 2 and d == 12):
         if h == 0:
             sss = '切噜~！2021新年快乐！！新的一年也请多多指教哦！~☆'
         elif h == 7:
@@ -48,16 +48,15 @@ async def repeat(app):
 
 async def clock(app):
     while True:
-        a = datetime.datetime.now()
-        d = datetime.timedelta(hours=1)
-        aa = datetime.time(a.hour, 0, 0, 0)
-        b = datetime.datetime.combine(a.date(), aa) + d
-        c = b - a
-        print(a)
-        print(b)
-        ss = c.seconds + float('0.' + str(c.microseconds))
-        print(ss)
-        await asyncio.sleep(ss)
+        cur_time = datetime.datetime.now()
+        delta = datetime.timedelta(hours=1)
+        to_time = datetime.time(cur_time.hour, 0, 0, 0)
+        next_time = datetime.datetime.combine(cur_time.date(), to_time) + delta
+        sleep_delta = next_time - cur_time
+        print(cur_time)
+        print(next_time)
+        print(sleep_delta.total_seconds())
+        await asyncio.sleep(sleep_delta.total_seconds())
         print("时间矫正完成。当前时间：", datetime.datetime.now())
         while True:
             t = datetime.datetime.now()
@@ -65,6 +64,7 @@ async def clock(app):
                 print("产生分的时间误差，开始矫正", t)
                 break
             asyncio.create_task(repeat(app))
+            # 这里用 create_task 而不用 await 主要是为了不让 repeat 函数占用时间导致误差
             if t.second != 0:
                 print("产生秒的时间误差，开始矫正", t)
                 break

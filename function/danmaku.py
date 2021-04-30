@@ -42,7 +42,7 @@ def get_data(room_id):
         '001000010000000700000001'  # 对长度补0并且将除了长度之后的内容进行拼接
 
     data_text = text.encode('ascii')  # 将数据包内容转为bytes型
-    data = data_head + data_text.hex()  # 将数据包头和数据包内容进行拼接
+    data = data_head + data_text.hex()  # 将数据包头和数据包内容进行拼接之后返回
     return bytes.fromhex(data)
 
 
@@ -70,7 +70,9 @@ async def startup(app, room_id: str):
                 print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
                 async for msg in ws:
                     await printDM(app, msg.data, room_id)
-        except:
+        except Exception as e:
+            if(str(e) == '断开连接'):
+                await asyncio.sleep(300)
             await asyncio.sleep(30)
             pass
 
@@ -85,13 +87,6 @@ async def sendHeartBeat(websocket, room_id):
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
         print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
-
-
-async def receDM(app, websocket, room_id):
-    '''收到弹幕数据包'''
-    while True:
-        recv_text = await websocket.receive()
-        await (printDM(app, recv_text, room_id))
 
 # 将数据包传入：
 
@@ -127,55 +122,54 @@ async def printDM(app, data, room_id):
     # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
     # op 为5意味着这是通知消息，cmd 基本就那几个了。
     if(op == 5):
-        try:
-            jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
-            sstr = ''
-            '''
-            if(jd['cmd'] == 'DANMU_MSG'):
-                sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]
-            elif(jd['cmd'] == 'LIVE'):
-                sstr = '[Notice] LIVE Start!'
-            elif(jd['cmd'] == 'PREPARING'):
-                sstr = '[Notice] LIVE Ended!'
-            elif(jd['cmd'] == 'SEND_GIFT'):
-                sstr = '[GIFT]' + jd['data']['uname'] + ' ' + jd['data']['action'] + \
-                    ' ' + str(jd['data']['num']) + 'x' + jd['data']['giftName']
-            elif(jd['cmd'] == "INTERACT_WORD"):
-                if jd['data']['msg_type'] == 1:
-                    sstr = '[ENTRY] ' + jd['data']['uname'] + ' 进入直播间'
-                elif jd['data']['msg_type'] == 2:
-                    sstr = '[FOLLOW] ' + jd['data']['uname'] + ' 关注了直播间'
-            elif(jd['cmd'] == "未知"):
-                print(jd)
-                sstr = '[SHARE] ' + jd['data']['uname'] + ' 分享了直播间'
-            else:
-                sstr = '[OTHER] ' + jd['cmd']
+        jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
+        sstr = ''
+        '''
+        if(jd['cmd'] == 'DANMU_MSG'):
+            sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]
+        elif(jd['cmd'] == 'LIVE'):
+            sstr = '[Notice] LIVE Start!'
+        elif(jd['cmd'] == 'PREPARING'):
+            sstr = '[Notice] LIVE Ended!'
+        elif(jd['cmd'] == 'SEND_GIFT'):
+            sstr = '[GIFT]' + jd['data']['uname'] + ' ' + jd['data']['action'] + \
+                ' ' + str(jd['data']['num']) + 'x' + jd['data']['giftName']
+        elif(jd['cmd'] == "INTERACT_WORD"):
+            if jd['data']['msg_type'] == 1:
+                sstr = '[ENTRY] ' + jd['data']['uname'] + ' 进入直播间'
+            elif jd['data']['msg_type'] == 2:
+                sstr = '[FOLLOW] ' + jd['data']['uname'] + ' 关注了直播间'
+        elif(jd['cmd'] == "未知"):
+            print(jd)
+            sstr = '[SHARE] ' + jd['data']['uname'] + ' 分享了直播间'
+        else:
+            sstr = '[OTHER] ' + jd['cmd']
 
-            if sstr != '':
-                await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
-            '''
+        if sstr != '':
+            await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
+        '''
 
-            if(jd['cmd'] == 'LIVE'):
-                Localpath = './data/live.json'
-                data = {}
-                fr = open(Localpath, encoding='utf-8')
-                data = json.load(fr)
-                fr.close()
-                info = get_info(room_id)
-                for i in data["data"]:
-                    if (room_id != str(i['room_id'])):
-                        continue
-                    for j in i['group']:
-                        sstr = '%s的直播开始啦！\n直播关键帧：' % info['user']
-                        await app.sendGroupMessage(j, MessageChain.create([
-                            Plain(sstr),
-                            Image.fromNetworkAddress(info['keyframe']),
-                            Plain('\n直播间地址：https://live.bilibili.com/%d' %
-                                  info['room_id'])
-                        ]))
-                    break
-        except Exception as e:
-            pass
+        if(jd['cmd'] != 'LIVE'):
+            return
+        Localpath = './data/live.json'
+        data = {}
+        fr = open(Localpath, encoding='utf-8')
+        data = json.load(fr)
+        fr.close()
+        info = get_info(room_id)
+        for i in data["data"]:
+            if (room_id != str(i['room_id'])):
+                continue
+            for j in i['group']:
+                sstr = '%s的直播开始啦！\n直播间标题：%s\n直播关键帧：' % (
+                    info['user'], info['title'])
+                await app.sendGroupMessage(j, MessageChain.create([
+                    Plain(sstr),
+                    Image.fromNetworkAddress(info['keyframe']),
+                    Plain('\n直播间地址：https://live.bilibili.com/%d' %
+                          info['room_id'])
+                ]))
+            raise Exception("断开连接")
 
 
 def get_info(room_id: str):
