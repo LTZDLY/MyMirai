@@ -84,7 +84,7 @@ async def report(app, group, city):
     else:
         ss += ' ' + daily['day_wind_power'] + \
             '到' + daily['night_wind_power'] + '级'
-    wind_direction = {'1': '东北风', '2': '东风', '3': '东南风', '4': '南风',
+    wind_direction = {'0': '无持续风向', '1': '东北风', '2': '东风', '3': '东南风', '4': '南风',
                       '5': '西南风', '6': '西风', '7': '西北风', '8': '北风'}
 
     url = 'https://wis.qq.com/weather/common?source=pc&weather_type=air%7Crise&' + \
@@ -101,7 +101,7 @@ async def report(app, group, city):
                 l.append(al)
         for i in l:
             ss += '\n' + i
-            
+
     ss += '\n空气质量指数: ' + str(air['data']['air']['aqi']) + ' ' + air['data']['air']['aqi_name'] + \
         '\n' + wind_direction[now['wind_direction']] + ': ' + now['wind_power'] + '级' +\
         '   湿度: ' + now['humidity'] + '%   气压: ' + now['pressure'] + 'hPa'

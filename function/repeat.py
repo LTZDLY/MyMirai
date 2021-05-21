@@ -7,7 +7,7 @@ from graia.application.message.elements.internal import Plain
 
 
 async def repeat(app):
-    group = [1138925965, 980644912, 372733015, 747861591]
+    group = [1138925965, 980644912, 372733015, 747861591, 819095234]
     t = datetime.datetime.now()
     h = t.hour
     d = t.day
@@ -40,10 +40,11 @@ async def repeat(app):
             asyncio.create_task(sign(app, 372733015))
             sss = '切噜~！23点啦！到睡觉的时候啦！记得最后再检查一次有没有完成打卡！晚安安！'
 
-    if sss == '':
-        return
-    for i in group:
-        await app.sendGroupMessage(i, MessageChain.create([Plain(sss)]))
+    if sss != '':
+        for i in group:
+            await app.sendGroupMessage(i, MessageChain.create([Plain(sss)]))
+
+    group = [1037928476]
 
 
 async def clock(app):
@@ -70,7 +71,6 @@ async def clock(app):
                 break
             await asyncio.sleep(3600)
             pass
-
 
 if __name__ == "__main__":
     a = range(5)

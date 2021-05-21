@@ -1,3 +1,4 @@
+import function.crack
 import json
 from datetime import datetime, timedelta
 from urllib import parse
@@ -50,13 +51,10 @@ def createlink(qq: int) -> Session:
         raise 'error'
 
     s = requests.session()
-    code = ''
-    with s.get('https://ids.tongji.edu.cn:8443/nidp/app/login?flag=true') as code_img:
-        code = s.post('http://172.81.215.215/pi/crack',
-                      json={'data_url': code_img.text}).json()['ans']
+    code = function.crack.main(s)
 
     data = {'option': 'credential', 'Ecom_User_ID': Ecom_User_ID,
-            'Ecom_Password': Ecom_Password, 'Ecom_code': code}
+            'Ecom_Password': Ecom_Password, 'Ecom_Captche': code}
 
     s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
     s.get('http://canvas.tongji.edu.cn/login')
@@ -78,13 +76,11 @@ def is_session(s: Session, member_id: int) -> Session:
 def add_person(qq_id, id, password):
     s = requests.session()
     s.get('https://ids.tongji.edu.cn:8443')
-    code = ''
-    with s.get('https://ids.tongji.edu.cn:8443/nidp/app/login?flag=true') as code_img:
-        code = s.post('http://172.81.215.215/pi/crack',
-                      json={'data_url': code_img.text}).json()['ans']
+    
+    code = function.crack.main(s)
 
     data = {'option': 'credential', 'Ecom_User_ID': id,
-            'Ecom_Password': password, 'Ecom_code': code}
+            'Ecom_Password': password, 'Ecom_Captche': code}
 
     sss = (s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)).text
 
