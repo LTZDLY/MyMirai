@@ -1,14 +1,18 @@
+# 此为使用另一库实现的直播监听功能代码。
+# 因原库在服务器上运行时会有不明原因导致失败，故寻找另一库重新实现该功能，效果良好
+
+
 import asyncio
 import datetime
 import json
 import zlib
 
-import aiohttp
 import requests
+from aiowebsocket.converses import AioWebSocket
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Image, Plain
 
-remote = 'wss://tx-bj-live-comet-01.chat.bilibili.com/sub'
+remote = 'wss://broadcastlv.chat.bilibili.com:2245/sub'
 
 hb = '00000010001000010000000200000001'
 
@@ -60,18 +64,20 @@ async def entrence(app, room_id):
 
 async def startup(app, room_id: str):
     '''创建ws连接b站弹幕服务器'''
-    async with aiohttp.ClientSession() as session:
+    async with AioWebSocket(remote) as aws:
+        converse = aws.manipulator
+        await converse.send(get_data(room_id))
+        tasks = asyncio.create_task(sendHeartBeat(converse, room_id))
+        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
+        t = t[:len(t) - 3] + ']'
+        print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
         try:
-            async with session.ws_connect(remote) as ws:
-                await ws.send_bytes(get_data(room_id))
-                asyncio.create_task(sendHeartBeat(ws, room_id))
-                t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-                t = t[:len(t) - 3] + ']'
-                print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
-                async for msg in ws:
-                    await printDM(app, msg.data, room_id)
+            while True:
+                recv_text = await converse.receive()
+                await printDM(app, recv_text, room_id)
         except Exception as e:
-            if(str(e) == '断开连接'):
+            tasks.cancel()
+            if str(e) == '断开连接':
                 await asyncio.sleep(300)
             await asyncio.sleep(30)
 
@@ -80,12 +86,16 @@ async def sendHeartBeat(websocket, room_id):
     '''每30秒发送心跳包'''
     while True:
         await asyncio.sleep(30)
-        if websocket.closed:
-            break  # 若连接断开，则退出函数
-        await websocket.send_bytes(bytes.fromhex(hb))
+        await websocket.send(bytes.fromhex(hb))
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
         print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
+
+
+async def receDM(app, websocket, room_id):
+    while True:
+        recv_text = await websocket.receive()
+        await printDM(app, recv_text, room_id)
 
 # 将数据包传入：
 

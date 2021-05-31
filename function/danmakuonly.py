@@ -1,3 +1,6 @@
+# 此为使用弹幕姬源码，可以直接运行使用。
+
+
 import asyncio
 import datetime
 import json
@@ -5,8 +8,6 @@ import zlib
 
 import aiohttp
 import requests
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Image, Plain
 
 remote = 'wss://tx-bj-live-comet-01.chat.bilibili.com/sub'
 
@@ -46,19 +47,19 @@ def get_data(room_id):
     return bytes.fromhex(data)
 
 
-async def entrence(app, room_id):
+async def entrence(room_id):
     '''弹幕服务器接入口'''
-    await startup(app, room_id)
+    await startup(room_id)
     num = 0
     while(True):
         num += 1
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
         print('%s[ERROR]: %s: 连接断开，正在尝试第%d次重连.' % (t, room_id, num))
-        await startup(app, room_id)
+        await startup(room_id)
 
 
-async def startup(app, room_id: str):
+async def startup(room_id: str):
     '''创建ws连接b站弹幕服务器'''
     async with aiohttp.ClientSession() as session:
         try:
@@ -67,13 +68,16 @@ async def startup(app, room_id: str):
                 asyncio.create_task(sendHeartBeat(ws, room_id))
                 t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
                 t = t[:len(t) - 3] + ']'
+                print(session.closed)
                 print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
+                print(session.closed)
+                await asyncio.sleep(60)
                 async for msg in ws:
-                    await printDM(app, msg.data, room_id)
+                    printDM(msg.data, room_id)
+                print(session.closed)
         except Exception as e:
-            if(str(e) == '断开连接'):
-                await asyncio.sleep(300)
-            await asyncio.sleep(30)
+            print(e)
+            print(e.args)
 
 
 async def sendHeartBeat(websocket, room_id):
@@ -90,7 +94,7 @@ async def sendHeartBeat(websocket, room_id):
 # 将数据包传入：
 
 
-async def printDM(app, data, room_id):
+def printDM(data, room_id):
     '''解析并输出数据包的数据'''
     # 获取数据包的长度，版本和操作类型
     packetLen = int(data[:4].hex(), 16)
@@ -100,13 +104,13 @@ async def printDM(app, data, room_id):
     # 有的时候可能会两个数据包连在一起发过来，所以利用前面的数据包长度判断，
 
     if(len(data) > packetLen):
-        await printDM(app, data[packetLen:], room_id)
+        printDM(data[packetLen:], room_id)
         data = data[:packetLen]
 
     # 有时会发送过来 zlib 压缩的数据包，这个时候要去解压。
     if(ver == 2):
         data = zlib.decompress(data[16:])
-        await printDM(app, data, room_id)
+        printDM(data, room_id)
         return
 
     # ver 为1的时候为进入房间后或心跳包服务器的回应。op 为3的时候为房间的人气值。
@@ -123,7 +127,6 @@ async def printDM(app, data, room_id):
     if(op == 5):
         jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
         sstr = ''
-        '''
         if(jd['cmd'] == 'DANMU_MSG'):
             sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]
         elif(jd['cmd'] == 'LIVE'):
@@ -145,81 +148,9 @@ async def printDM(app, data, room_id):
             sstr = '[OTHER] ' + jd['cmd']
 
         if sstr != '':
-            await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
-        '''
-
-        if(jd['cmd'] != 'LIVE'):
-            return
-        Localpath = './data/live.json'
-        data = {}
-        fr = open(Localpath, encoding='utf-8')
-        data = json.load(fr)
-        fr.close()
-        info = get_info(room_id)
-        for i in data["data"]:
-            if (room_id != str(i['room_id'])):
-                continue
-            for j in i['group']:
-                sstr = '%s的直播开始啦！\n直播间标题：%s\n直播关键帧：' % (
-                    info['user'], info['title'])
-                await app.sendGroupMessage(j, MessageChain.create([
-                    Plain(sstr),
-                    Image.fromNetworkAddress(info['keyframe']),
-                    Plain('\n直播间地址：https://live.bilibili.com/%d' %
-                          info['room_id'])
-                ]))
-            raise Exception("断开连接")
+            print(sstr)
 
 
-def get_info(room_id: str):
-    '''获取b站用户个人信息'''
-    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
-    headers = {'user-Agent': user_agent}
-    url = 'https://live.bilibili.com/%s' % room_id
-    r = requests.get(url, headers=headers)
-    t = r.content.decode('utf-8')
-    l = t.split('''<script>window.__NEPTUNE_IS_MY_WAIFU__=''')
-    ll = l[1].split('''</script>''')
-    text = ll[0]
-    data_raw = json.loads(text)
-
-    uid = data_raw['roomInfoRes']['data']['room_info']['uid']
-    room_id = data_raw['roomInfoRes']['data']['room_info']['room_id']
-    title = data_raw['roomInfoRes']['data']['room_info']['title']
-    keyframe = data_raw['roomInfoRes']['data']['room_info']['keyframe']
-    uname = data_raw['roomInfoRes']['data']['anchor_info']['base_info']['uname']
-
-    data = {'title': title,
-            'user': uname,
-            'uid': uid,
-            'room_id': room_id,
-            'keyframe': keyframe}
-    return data
-
-
-def livewrite(group: int, room_id: int):
-    '''写入json文件'''
-    Localpath = './data/live.json'
-    data = {}
-    fr = open(Localpath, encoding='utf-8')
-    data = json.load(fr)
-    fr.close()
-
-    for i in data["data"]:
-        if i['room_id'] == room_id:
-            l = i['group']
-            l.append(group)
-            i['group'] = l
-            break
-    else:
-        l = data['data']
-        n = {'room_id': room_id, 'group': [group]}
-        l.append(n)
-        data['data'] = l
-        pass
-
-    with open(Localpath, "w") as fw:
-        jsObj = json.dumps(data)
-        fw.write(jsObj)
-        fw.close()
-    pass
+if __name__ == "__main__":
+    roomid = int(input('请输入房间号'))
+    asyncio.get_event_loop().run_until_complete(startup(roomid))

@@ -1,4 +1,3 @@
-import function.crack
 import json
 from datetime import datetime, timedelta
 from urllib import parse
@@ -8,6 +7,8 @@ from bs4 import BeautifulSoup
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 from requests.sessions import Session
+
+from .crack import crack_main
 
 
 def is_json(myjson):
@@ -29,7 +30,7 @@ def get_id(member_id: int) -> int:
         if i['qq'] == member_id:
             return i['user_id']
     else:
-        raise 'error'
+        raise Exception("账号未记录")
 
 
 def createlink(qq: int) -> Session:
@@ -48,10 +49,10 @@ def createlink(qq: int) -> Session:
             Ecom_Password = i['password']
             break
     else:
-        raise 'error'
+        raise Exception("账号未记录")
 
     s = requests.session()
-    code = function.crack.main(s)
+    code = crack_main(s)
 
     data = {'option': 'credential', 'Ecom_User_ID': Ecom_User_ID,
             'Ecom_Password': Ecom_Password, 'Ecom_Captche': code}
@@ -76,8 +77,8 @@ def is_session(s: Session, member_id: int) -> Session:
 def add_person(qq_id, id, password):
     s = requests.session()
     s.get('https://ids.tongji.edu.cn:8443')
-    
-    code = function.crack.main(s)
+
+    code = crack_main(s)
 
     data = {'option': 'credential', 'Ecom_User_ID': id,
             'Ecom_Password': password, 'Ecom_Captche': code}
@@ -85,7 +86,7 @@ def add_person(qq_id, id, password):
     sss = (s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)).text
 
     if sss.find("账号状态需要更新，请先执行更新操作！") != -1:
-        raise 'error'
+        raise Exception("密码错误")
 
     user_id = 0
     soup = BeautifulSoup(

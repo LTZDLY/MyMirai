@@ -172,7 +172,7 @@ def crack(data):
     return [{"x": int(ans[w][0]), "y": int(ans[w][1])} for w in data["wordList"]]
 
 
-def main(s: requests.Session):
+def crack_main(s: requests.Session):
     while True:
         data = getData(s)
         point = crack(data)
@@ -186,4 +186,4 @@ def main(s: requests.Session):
 
 
 if __name__ == "__main__":
-    print(main())
+    print(crack_main())

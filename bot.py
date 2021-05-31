@@ -1,7 +1,7 @@
 import asyncio
+import datetime
 import json
 import os
-from pathlib import Path
 import random
 import re
 
@@ -14,7 +14,7 @@ from graia.application.event.mirai import BotLeaveEventKick
 from graia.application.friend import Friend
 from graia.application.group import Group, Member
 from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import At, Image, Plain, Quote, Voice, Voice_LocalFile
+from graia.application.message.elements.internal import At, Plain, Quote, Voice
 from graia.broadcast import Broadcast
 from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
@@ -22,7 +22,7 @@ from graia.broadcast.interrupt.waiter import Waiter
 from function.bilibili import bilibili
 from function.canvas import add_person, canvas, createlink
 from function.cherugo import cheru2str, str2cheru
-from function.danmaku import get_info, livewrite, entrence
+from function.danmaku import entrence, get_info, livewrite
 from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
 from function.latex import latex
@@ -39,6 +39,8 @@ from function.weather import weather
 
 live = {}
 sess = {}
+bed = {}
+rep = {}
 
 loop = asyncio.get_event_loop()
 
@@ -111,7 +113,40 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     # bot启用检查
     if (int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0):
         return
+
+    # 复读
+    # 这里我直接对Image类的源码直接进行了修改，重载==运算符使得图片可以进行复读，修改如下：
+    # 增加了几行代码：
+
+
+    '''
+
+class Image(InternalElement):
     
+    ---
+
+    def __eq__(self, other) -> bool:
+        if other.__class__.__name__ == 'Image':
+            return (self.imageId == other.imageId)
+        else:
+            return False
+    
+    ---
+
+    '''
+
+
+    if not group.id in rep:
+        rep[group.id] = [message.__root__[1:], 1]
+    else:
+        message_a = message.__root__[1:]
+        if rep[group.id][0] == message_a:
+            rep[group.id][1] += 1
+        else:
+            rep[group.id] = [message_a, 1]
+        if rep[group.id][1] == 3:
+            await app.sendGroupMessage(group, MessageChain.create(message_a))
+
     # bot撤回指令，不支持转义
     if message.has(Quote):
         for at in message.get(Quote):
@@ -261,7 +296,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     if member.id == hostqq and message.asDisplay().startswith("bilibili"):
         await bilibili(app, group, message.asDisplay())
 
-    msg = message.asDisplay() #存储转义
+    msg = message.asDisplay()  # 存储转义
     data = loadDefine()
     for i in data:
         if msg.find(i) == -1:
@@ -364,11 +399,17 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 temp = createlink(member.id)
                 sess[member.id] = temp
             await canvas(app, group, member, msg, sess[member.id])
-        except:
-            await app.sendGroupMessage(group, MessageChain.create([Plain(
-                '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
-                '注意：在此之前请检查您是否与bot互为好友'
-            )]))
+        except Exception as e:
+            if str(e) == "账号未记录":
+                await app.sendGroupMessage(group, MessageChain.create([Plain(
+                    '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
+                    '注意：在此之前请检查您是否与bot互为好友'
+                )]))
+            else:
+                print(e)
+                print(str(e))
+                print(e.args)
+                print(repr(e))
 
     # 天气模块
     if msg.split(' ')[0].endswith('天气'):
@@ -408,7 +449,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
 
         # 此处发语音功能限定文件格式为silk，并且对框架具有一定版本要求，并且音质贼差
-        filePath = 'F:\\silk2mp3\\cheru\\'
+        filePath = './source/audio/cheru/'
         for i, j, k in os.walk(filePath):
             file = filePath + k[random.randint(0, len(k) - 1)]
         print(file)
@@ -433,7 +474,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     if msg.startswith("来点"):
         # FIXME 啊啊啊啊啊啊我TM一不小心把图库给删了啊啊啊啊啊啊
         await seImage(app, group, msg)
-    
+
     # 选择模块
     if msg.startswith("choice "):
         ss = msgs.split(']', 1)
@@ -461,6 +502,54 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
         await app.sendGroupMessage(group, message_a.asSendable())
         pass
 
+    mmm = message.asSerializationString()
+    if mmm.find('[mirai:at:1424912867'):
+        text = mmm.split(' ')
+        if len(text) == 2:
+            if text[1] == '起床':
+                t = datetime.datetime.now() - datetime.timedelta(hours=4)
+                if not group.id in bed:
+                    bed[group.id] = {}
+                if not member.id in bed[group.id] or bed[group.id][member.id][0].date() != t.date():
+                    bed[group.id][member.id] = [t, 'on']
+                else:
+                    ss = '你今天已经起床过了哟！'
+                    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                    return
+
+                if not 'live_number' in bed[group.id]:
+                    bed[group.id]['live_number'] = 1
+                else:
+                    bed[group.id]['live_number'] += 1
+                if not 'day' in bed:
+                    bed['day'] = t.date()
+                else:
+                    tb = bed['day']
+                    if t.date() != tb:
+                        bed[group.id]['live_number'] == 1
+                    bed['day'] = t.date()
+                ss = '你是今天第%d个起床的群友哦！' % bed[group.id]['live_number']
+                await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                return
+            elif text[1] == '睡觉':
+                t = datetime.datetime.now() - datetime.timedelta(hours=4)
+                if not group.id in bed:
+                    ss = '你今天还没有起过床哟！'
+                elif not member.id in bed[group.id]:
+                    ss = '你今天还没有起过床哟！'
+                elif bed[group.id][member.id][0].date() != t.date():
+                    ss = '你今天还没有起过床哟！'
+                elif bed[group.id][member.id][1] == 'off':
+                    ss = '你已经睡觉了哟！'
+                else:
+                    td = t - bed[group.id][member.id][0]
+                    ss = '你今天清醒了%s哟！' % time_to_str(int(td.total_seconds()))
+                    bed[group.id][member.id] = [t, 'off']
+                    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                    return
+                await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                return
+
     # 瞎搞模块
     if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:
         await app.sendGroupMessage(group, MessageChain.create([Plain('禁止/生日快乐')]))
@@ -478,7 +567,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             except:
                 pass
         await app.sendGroupMessage(group, message.asSendable())
-        
+
     pattern = re.compile(r'异.*世.*相.*遇.*尽.*享.*美.*味.*')
     if pattern.search(message.asDisplay()) != None:
         await app.sendGroupMessage(group, MessageChain.create([Plain("来一份二刺猿桶")]))
