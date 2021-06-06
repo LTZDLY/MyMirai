@@ -28,6 +28,7 @@ from function.ini import read_from_ini, write_in_ini
 from function.latex import latex
 from function.leetcode import get_daily, get_rand, luogu_rand
 from function.mute import mute_member, set_mute, time_to_str
+from function.ouen import ouen
 from function.pcr import pcr, pcrteam
 from function.permission import inban, permissionCheck, setMain
 from function.private import priv_handler
@@ -118,7 +119,6 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     # 这里我直接对Image类的源码直接进行了修改，重载==运算符使得图片可以进行复读，修改如下：
     # 增加了几行代码：
 
-
     '''
 
 class Image(InternalElement):
@@ -134,7 +134,6 @@ class Image(InternalElement):
     ---
 
     '''
-
 
     if not group.id in rep:
         rep[group.id] = [message.__root__[1:], 1]
@@ -475,6 +474,14 @@ class Image(InternalElement):
         # FIXME 啊啊啊啊啊啊我TM一不小心把图库给删了啊啊啊啊啊啊
         await seImage(app, group, msg)
 
+    if msg.startswith("举牌 "):
+        text = msg.split(' ')
+        if len(text >= 2):
+            txt = text[1]
+            for i in text[2:]:
+                txt += ' ' + i
+        await ouen(app, txt, group)
+        
     # 选择模块
     if msg.startswith("choice "):
         ss = msgs.split(']', 1)

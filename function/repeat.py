@@ -1,9 +1,11 @@
 import asyncio
 import datetime
-from function.bilibili import sign
 
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
+
+from function.bilibili import sign
+from function.excel import readexcel
 
 
 async def repeat(app):
@@ -29,6 +31,7 @@ async def repeat(app):
     else:
         if h == 7:
             asyncio.create_task(sign(app, 372733015))
+            asyncio.create_task(readexcel(app, 958056260))
             sss = '切噜~！早上好！已经七点了！该起床并完成每日打卡咯！'
         elif h == 12:
             sss = '切噜~！中午好！12点到啦吃午饭了吗！'
