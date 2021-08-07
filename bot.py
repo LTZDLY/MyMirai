@@ -23,16 +23,17 @@ from function.bilibili import bilibili
 from function.canvas import add_person, canvas, createlink
 from function.cherugo import cheru2str, str2cheru
 from function.danmaku import entrence, get_info, livewrite
+from function.excel import readexcel
 from function.image import seImage
 from function.ini import read_from_ini, write_in_ini
-from function.latex import latex
+from function.latex import dove, latex
 from function.leetcode import get_daily, get_rand, luogu_rand
 from function.mute import mute_member, set_mute, time_to_str
 from function.ouen import ouen
 from function.pcr import pcr, pcrteam
 from function.permission import inban, permissionCheck, setMain
 from function.private import priv_handler
-from function.repeat import clock, repeat
+from function.repeat import clock, remindme, repeat
 from function.signup import (atme, choice, define, loadDefine, paraphrase,
                              signup)
 from function.switch import switch
@@ -135,7 +136,7 @@ class Image(InternalElement):
 
     '''
 
-    if not group.id in rep:
+    if group.id not in rep:
         rep[group.id] = [message.__root__[1:], 1]
     else:
         message_a = message.__root__[1:]
@@ -295,6 +296,9 @@ class Image(InternalElement):
     if member.id == hostqq and message.asDisplay().startswith("bilibili"):
         await bilibili(app, group, message.asDisplay())
 
+    if member.id == hostqq and message.asDisplay() == '生日测试':
+        await readexcel(app, 958056260)
+
     msg = message.asDisplay()  # 存储转义
     data = loadDefine()
     for i in data:
@@ -353,7 +357,7 @@ class Image(InternalElement):
                     break
         else:
             try:
-                if not room_id in live:
+                if room_id not in live:
                     live[room_id] = asyncio.create_task(
                         entrence(app, room_id))
                 info = get_info(room_id)
@@ -394,7 +398,7 @@ class Image(InternalElement):
     if msg.startswith('canvas.'):
         global sess
         try:
-            if not member.id in sess:
+            if member.id not in sess:
                 temp = createlink(member.id)
                 sess[member.id] = temp
             await canvas(app, group, member, msg, sess[member.id])
@@ -476,12 +480,12 @@ class Image(InternalElement):
 
     if msg.startswith("举牌 "):
         text = msg.split(' ')
-        if len(text >= 2):
+        if len(text) >= 2:
             txt = text[1]
             for i in text[2:]:
                 txt += ' ' + i
         await ouen(app, txt, group)
-        
+
     # 选择模块
     if msg.startswith("choice "):
         ss = msgs.split(']', 1)
@@ -509,40 +513,43 @@ class Image(InternalElement):
         await app.sendGroupMessage(group, message_a.asSendable())
         pass
 
+    if message.asDisplay().find("后提醒我") != -1:
+        await remindme(app, group.id, member.id, message)
+
     mmm = message.asSerializationString()
-    if mmm.find('[mirai:at:1424912867'):
+    if mmm.find('[mirai:at:%d' % app.connect_info.account) != -1:
         text = mmm.split(' ')
         if len(text) == 2:
             if text[1] == '起床':
                 t = datetime.datetime.now() - datetime.timedelta(hours=4)
-                if not group.id in bed:
+                if group.id not in bed:
                     bed[group.id] = {}
-                if not member.id in bed[group.id] or bed[group.id][member.id][0].date() != t.date():
+                if member.id not in bed[group.id] or bed[group.id][member.id][0].date() != t.date():
                     bed[group.id][member.id] = [t, 'on']
                 else:
                     ss = '你今天已经起床过了哟！'
                     await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
                     return
 
-                if not 'live_number' in bed[group.id]:
+                if 'live_number' not in bed[group.id]:
                     bed[group.id]['live_number'] = 1
                 else:
                     bed[group.id]['live_number'] += 1
-                if not 'day' in bed:
+                if 'day' not in bed:
                     bed['day'] = t.date()
                 else:
                     tb = bed['day']
                     if t.date() != tb:
-                        bed[group.id]['live_number'] == 1
+                        bed[group.id]['live_number'] = 1
                     bed['day'] = t.date()
                 ss = '你是今天第%d个起床的群友哦！' % bed[group.id]['live_number']
                 await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
                 return
             elif text[1] == '睡觉':
                 t = datetime.datetime.now() - datetime.timedelta(hours=4)
-                if not group.id in bed:
+                if group.id not in bed:
                     ss = '你今天还没有起过床哟！'
-                elif not member.id in bed[group.id]:
+                elif member.id not in bed[group.id]:
                     ss = '你今天还没有起过床哟！'
                 elif bed[group.id][member.id][0].date() != t.date():
                     ss = '你今天还没有起过床哟！'
@@ -558,6 +565,8 @@ class Image(InternalElement):
                 return
 
     # 瞎搞模块
+    if message.asDisplay() == "咕一下":
+        await app.sendGroupMessage(group, MessageChain.create([Plain(dove())]))
     if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:
         await app.sendGroupMessage(group, MessageChain.create([Plain('禁止/生日快乐')]))
     if message.has(At):

@@ -1,7 +1,13 @@
 from urllib import parse
 
+import requests
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Image, Plain
+
+
+def dove() -> str:
+    url = 'http://www.koboldgame.com/gezi/api.php'
+    return requests.get(url).text.split('\"')[1]
 
 
 async def latex(app, group, s: str):

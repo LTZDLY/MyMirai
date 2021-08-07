@@ -2,7 +2,7 @@ import asyncio
 import datetime
 
 from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.application.message.elements.internal import At, Plain
 
 from function.bilibili import sign
 from function.excel import readexcel
@@ -48,6 +48,60 @@ async def repeat(app):
             await app.sendGroupMessage(i, MessageChain.create([Plain(sss)]))
 
     group = [1037928476]
+
+
+async def reminder(app, group: int, message: MessageChain, d: datetime.timedelta):
+    await asyncio.sleep(d.total_seconds())
+    await app.sendGroupMessage(group, message.asSendable())
+
+
+async def remindme(app, group: int, member: int, message: MessageChain):
+    message_a = MessageChain.create([At(member), Plain('\n')])
+    s = message.__root__[1].text
+    text = s.split('后提醒我')
+    if(len(text) <= 1):
+        return
+    else:
+        rep = text[0]
+        t = text[1]
+        for i in text[2:]:
+            t += '后提醒我' + i
+        message.__root__[1].text = t
+    day = hour = minute = second = 0
+    text = text[0]
+    if(text.find('天') != -1):
+        text = text.split('天')
+        day = text[0]
+        text = text[1]
+    if(text.find('小时') != -1):
+        text = text.split('小时')
+        hour = text[0]
+        text = text[1]
+    if(text.find('分钟') != -1):
+        text = text.split('分钟')
+        minute = text[0]
+        text = text[1]
+    elif(text.find('分') != -1):
+        text = text.split('分')
+        minute = text[0]
+        text = text[1]
+    if(text.find('秒') != -1):
+        text = text.split('秒')
+        second = text[0]
+        text = text[1]
+    try:
+        day = float(day)
+        hour = float(hour)
+        minute = float(minute)
+        second = float(second)
+        d = datetime.timedelta(days=day, hours=hour,
+                               minutes=minute, seconds=second)
+    except:
+        return
+    asyncio.create_task(
+        reminder(app, group, message_a.plusWith(message).asSendable(), d))
+    message_b = MessageChain.create([Plain('切噜~♪将在' + rep + '后提醒你：\n')])
+    await app.sendGroupMessage(group, message_b.plusWith(message).asSendable())
 
 
 async def clock(app):

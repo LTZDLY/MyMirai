@@ -8,8 +8,6 @@ import requests
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 
-from function.bilibili import SESSDATA, bili_jct, token
-
 uprear = 7000
 srear = 25000
 rear = 180000
@@ -23,15 +21,15 @@ def short2name(data: Dict, short: str) -> str:
             return i["name"]
     return short
 
-
+token = "6sryLVjh-R1CBccj34RnhkPbiZfoUqHFl8c8"
+cookie = "sid=5pw0qear; DedeUserID=8012418; DedeUserID__ckMd5=ef5b68c1010b1761; UM_distinctid=178c6c73d2c995-0e8e05f4c727cd-c3f3568-144000-178c6c73d2d6b0; SESSDATA=a1a93904%2C1638719498%2C4037e*61; bili_jct=94385fca6a111c7e759e49ceab9290da; user-info=7930841; session-api=n9ne9dl61luv9h6c0or8rf4k80; _csrf=b2R5VyS9zFgnVm9f8jGVa8X6; CNZZDATA1275376637=1414155546-1600869121-%7C1625580605"
 async def dayReportCollect(app, group):
     url = "https://www.bigfun.cn/api/feweb?target=gzlj-clan-day-report-collect%2Fa"
-    cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + \
-        bili_jct + '; session-api=3o2l5qds0cepbb2ks73rhn1pks'
-    headers = {"cookie": cookie, "csrf_token": token, "csrf": token}
+    headers = {"cookie": cookie, "x_csrf_token": token}
     r = requests.get(url, headers=headers)
     life = {6000000: '1', 8000000: '2',
-            10000000: '3', 12000000: '4', 20000000: '5'}
+            10000000: '3', 12000000: '4', 
+            20000000: '5', 15000000: '5'}
     if (r.json()["code"] == 0):
         s = '公会名称：' + r.json()["data"]["clan_info"]["name"]\
             + '\n当前排名：' + str(r.json()["data"]["clan_info"]["last_ranking"])\
@@ -49,9 +47,7 @@ async def dayReportTotal(app, group, flag=False):
     td = timedelta(hours=5)
     t = (tt - td).strftime("%Y-%m-%d")
     url = 'https://www.bigfun.cn/api/feweb?target=gzlj-clan-day-report%2Fa&size=30&date=' + t
-    cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + \
-        bili_jct + '; session-api=3o2l5qds0cepbb2ks73rhn1pks'
-    headers = {"cookie": cookie, "csrf_token": token, "csrf": token}
+    headers = {"cookie": cookie, "x_csrf_token": token}
     r = requests.get(url, headers=headers)
     if (r.json()["code"] == 0):
         num = 0
@@ -90,9 +86,7 @@ async def dayPersonFind(app, group, msg: str, flag=False):
     td = timedelta(hours=5)
     t = (tt - td).strftime("%Y-%m-%d")
     url = 'https://www.bigfun.cn/api/feweb?target=gzlj-clan-day-report%2Fa&size=30&date=' + t
-    cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + \
-        bili_jct + '; session-api=3o2l5qds0cepbb2ks73rhn1pks'
-    headers = {"cookie": cookie, "csrf_token": token, "csrf": token}
+    headers = {"cookie": cookie, "x_csrf_token": token}
     r = requests.get(url, headers=headers)
     if (r.json()["code"] == 0):
         s = ''
@@ -183,9 +177,7 @@ async def findWorkDetails(app, group, msg: str):
         return
     workid = text[1]
     url = "https://www.bigfun.cn/api/feweb?target=get-gzlj-team-war-work-detail%2Fa&work_id=" + workid
-    cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + \
-        bili_jct + '; session-api=3o2l5qds0cepbb2ks73rhn1pks'
-    headers = {"cookie": cookie, "csrf_token": token, "csrf": token}
+    headers = {"cookie": cookie, "x_csrf_token": token}
     r = requests.get(url, headers=headers)
 
     Localpath = './data/pcrcharacter.json'

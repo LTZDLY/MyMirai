@@ -89,7 +89,7 @@ async def sendHeartBeat(websocket, room_id):
         await websocket.send(bytes.fromhex(hb))
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
-        print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
+        # print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
 
 
 async def receDM(app, websocket, room_id):
@@ -160,6 +160,9 @@ async def printDM(app, data, room_id):
 
         if(jd['cmd'] != 'LIVE'):
             return
+        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
+        t = t[:len(t) - 3] + ']'
+        print('%s[NOTICE]: %s: LIVE START!' % (t, room_id))
         Localpath = './data/live.json'
         data = {}
         fr = open(Localpath, encoding='utf-8')
