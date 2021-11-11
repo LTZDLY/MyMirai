@@ -103,6 +103,7 @@ def printDM(data):
     # op 为5意味着这是通知消息，cmd 基本就那几个了。
     if(op == 5):
         jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
+        print(jd)
         sstr = ''
         if(jd['cmd'] == 'DANMU_MSG'):
             sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]

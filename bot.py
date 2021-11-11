@@ -18,6 +18,7 @@ from graia.application.message.elements.internal import At, Plain, Quote, Voice
 from graia.broadcast import Broadcast
 from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
+import requests
 
 from function.bilibili import bilibili
 from function.canvas import add_person, canvas, createlink
@@ -32,6 +33,7 @@ from function.mute import mute_member, set_mute, time_to_str
 from function.ouen import ouen
 from function.pcr import pcr, pcrteam
 from function.permission import inban, permissionCheck, setMain
+from function.portune import portune
 from function.private import priv_handler
 from function.repeat import clock, remindme, repeat
 from function.signup import (atme, choice, define, loadDefine, paraphrase,
@@ -278,10 +280,15 @@ class Image(InternalElement):
                                         await app.sendFriendMessage(member.id, MessageChain.create([
                                             Plain("记录成功.")
                                         ]))
-                                    except:
-                                        await app.sendFriendMessage(member.id, MessageChain.create([
-                                            Plain("记录失败，请检查学号密码是否正确.")
-                                        ]))
+                                    except Exception as e:
+                                        if str(e) == "验证码错误":
+                                            await app.sendFriendMessage(member.id, MessageChain.create([
+                                                Plain("记录超时，请稍后再试.")
+                                            ]))
+                                        elif str(e) == "密码错误":
+                                            await app.sendFriendMessage(member.id, MessageChain.create([
+                                                Plain("记录失败，请检查学号密码是否正确.")
+                                            ]))
                                     return event
                             await inc.wait(waiter2)
                             return event
@@ -304,7 +311,7 @@ class Image(InternalElement):
     for i in data:
         if msg.find(i) == -1:
             continue
-        await app.sendGroupMessage(group, MessageChain.create([Plain('发生转义：\n' + i + '->' + data[i])]))
+        # await app.sendGroupMessage(group, MessageChain.create([Plain('发生转义：\n' + i + '->' + data[i])]))
         msg = msg.replace(i, data[i])
     msgs = message.asSerializationString()
     data = loadDefine()
@@ -407,6 +414,10 @@ class Image(InternalElement):
                 await app.sendGroupMessage(group, MessageChain.create([Plain(
                     '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
                     '注意：在此之前请检查您是否与bot互为好友'
+                )]))
+            elif str(e) == "验证码错误":
+                await app.sendGroupMessage(group, MessageChain.create([Plain(
+                    '登录超时，请稍后再试。'
                 )]))
             else:
                 print(e)
@@ -564,7 +575,44 @@ class Image(InternalElement):
                 await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
                 return
 
+    # pcr运势模块
+    if message.asDisplay().startswith("运势"):
+        t = datetime.datetime.now() - datetime.timedelta(hours=4)
+        if not 'p' in bed:
+            bed['p'] = {}
+        if not member.id in bed['p']:
+            bed['p'][member.id] = t
+            await portune(app, group)
+        else:
+            if bed['p'][member.id].date() != t.date():
+                bed['p'][member.id] = t
+                await portune(app, group)
+            else:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    Plain('你今天已经抽过签了，欢迎明天再来~')
+                ]))
+
     # 瞎搞模块
+    if msg.startswith("expand"):
+        text = msg.split(' ')
+        if len(text) >= 2:
+            txt = text[1]
+            for i in text[2:]:
+                txt += ' ' + i
+        url = "https://lab.magiconch.com/api/nbnhhsh/guess"
+        r = requests.post(url, data={"text": txt})
+        s = eval(r.text)
+        if s:
+            if 'trans' not in s[0]:
+                ss = "你在说些什么"
+            else:
+                ss = "%s 可能是：" % s[0]['name']
+                s[0]['trans'].sort()
+                for i in s[0]['trans']:
+                    ss += '\n' + i
+        else:
+            ss = "我听不懂"
+        await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
     if message.asDisplay() == "咕一下":
         await app.sendGroupMessage(group, MessageChain.create([Plain(dove())]))
     if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:

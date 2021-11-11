@@ -121,11 +121,12 @@ def printDM(data, room_id):
             print('%s[POPULARITY]: %s: %d' %
                   (t, room_id, int(data[16:].hex(), 16)))
         return
-
+    
     # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
     # op 为5意味着这是通知消息，cmd 基本就那几个了。
     if(op == 5):
         jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
+        print(jd)
         sstr = ''
         if(jd['cmd'] == 'DANMU_MSG'):
             sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]

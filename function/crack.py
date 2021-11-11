@@ -186,4 +186,5 @@ def crack_main(s: requests.Session):
 
 
 if __name__ == "__main__":
-    print(crack_main())
+    s = requests.session()
+    print(crack_main(s))

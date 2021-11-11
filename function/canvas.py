@@ -53,6 +53,8 @@ def createlink(qq: int) -> Session:
 
     s = requests.session()
     code = crack_main(s)
+    if code == None:
+        raise Exception("验证码错误")
 
     data = {'option': 'credential', 'Ecom_User_ID': Ecom_User_ID,
             'Ecom_Password': Ecom_Password, 'Ecom_Captche': code}
@@ -79,6 +81,8 @@ def add_person(qq_id, id, password):
     s.get('https://ids.tongji.edu.cn:8443')
 
     code = crack_main(s)
+    if code == None:
+        raise Exception("验证码错误")
 
     data = {'option': 'credential', 'Ecom_User_ID': id,
             'Ecom_Password': password, 'Ecom_Captche': code}
@@ -213,9 +217,6 @@ async def addddl(app, s, group, member, msg: str):
 
     url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events'
 
-    s = createlink(member.id)
-    aaaa = requests.utils.dict_from_cookiejar(s.cookies)
-
     data = {'calendar_event[title]': event_title, 'calendar_event[start_at]': event_start, 'calendar_event[end_at]': event_end,
             'calendar_event[location_name]': event_local, 'calendar_event[context_code]': 'user_' + str(get_id(member.id)), '_method': _method,
             'authenticity_token': parse.unquote(requests.utils.dict_from_cookiejar(s.cookies)['_csrf_token'])}
@@ -313,7 +314,14 @@ def markunfinsh():
 
 
 async def canvas(app, group, member, msg, s: Session):
-    s = is_session(s, member.id)
+    try:
+        s = is_session(s, member.id)
+    except Exception as e:
+        if str(e) == "验证码错误":
+            await app.sendGroupMessage(group, MessageChain.create([Plain(
+                '登录超时，请稍后再试。'
+            )]))
+        return
     if msg == 'canvas.todo':
         await timetable(app, s, group, member)
     if msg == 'canvas.todo.finish':
