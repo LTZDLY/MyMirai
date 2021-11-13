@@ -77,6 +77,10 @@ async def receDM(websocket):
 
 
 def printDM(data):
+    # 如果传入的data为null则直接返回
+    if not data:
+        return
+    
     # 获取数据包的长度，版本和操作类型
     packetLen = int(data[:4].hex(), 16)
     ver = int(data[6:8].hex(), 16)
@@ -103,7 +107,7 @@ def printDM(data):
     # op 为5意味着这是通知消息，cmd 基本就那几个了。
     if(op == 5):
         jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
-        print(jd)
+        # print(jd)
         sstr = ''
         if(jd['cmd'] == 'DANMU_MSG'):
             sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]

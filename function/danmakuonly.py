@@ -96,6 +96,10 @@ async def sendHeartBeat(websocket, room_id):
 
 def printDM(data, room_id):
     '''解析并输出数据包的数据'''
+    # 如果传入的data为null则直接返回
+    if not data:
+        return
+    
     # 获取数据包的长度，版本和操作类型
     packetLen = int(data[:4].hex(), 16)
     ver = int(data[6:8].hex(), 16)

@@ -57,6 +57,7 @@ async def reminder(app, group: int, message: MessageChain, d: datetime.timedelta
 
 async def remindme(app, group: int, member: int, message: MessageChain):
     message_a = MessageChain.create([At(member), Plain('\n')])
+    message_a.__root__[0].display = ''
     s = message.__root__[1].text
     text = s.split('后提醒我')
     if(len(text) <= 1):

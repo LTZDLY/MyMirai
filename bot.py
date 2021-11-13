@@ -219,9 +219,9 @@ class Image(InternalElement):
 
         for i in data["data"]:
             if i['qq'] == member.id:
-                await app.sendGroupMessage(group, MessageChain.create([
-                    At(member.id), Plain("您已在列表当中！")
-                ]))
+                m = MessageChain.create([At(member.id), Plain("您已在列表当中！")])
+                m.__root__[0].display = ''
+                await app.sendGroupMessage(group, m)
                 break
         else:
             try:
@@ -232,9 +232,9 @@ class Image(InternalElement):
                           "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
                 ]))
             except:
-                await app.sendGroupMessage(group, MessageChain.create([
-                    At(member.id), Plain("您并不是bot好友！")
-                ]))
+                m = MessageChain.create([At(member.id), Plain("您并不是bot好友！")])
+                m.__root__[0].display = ''
+                await app.sendGroupMessage(group, m)
 
             global ti
             ti = 0
@@ -437,7 +437,9 @@ class Image(InternalElement):
             t.cancel()
             await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸停止")]))
         else:
-            await app.sendGroupMessage(group, MessageChain.create([At(hostqq), Plain("你并没有在视奸")]))
+            m = MessageChain.create([At(hostqq), Plain("你并没有在视奸")])
+            m.__root__[0].display = ''
+            await app.sendGroupMessage(group, m)
 
     # FIXME leetcode每日题库好像有点问题记得修
     if msg == "leetcode.daily":
@@ -482,7 +484,9 @@ class Image(InternalElement):
         if s == '':
             return
         msg = cheru2str(s)
-        await app.sendGroupMessage(group, MessageChain.create([At(member.id), Plain(msg)]))
+        m = MessageChain.create([At(member.id), Plain(msg)])
+        m.__root__[0].display = ''
+        await app.sendGroupMessage(group, m)
 
     # 图库模块
     if msg.startswith("来点"):
@@ -586,11 +590,12 @@ class Image(InternalElement):
         else:
             if bed['p'][member.id].date() != t.date():
                 bed['p'][member.id] = t
-                await portune(app, group)
+                await portune(app, group.id, member.id)
             else:
-                await app.sendGroupMessage(group, MessageChain.create([
-                    Plain('你今天已经抽过签了，欢迎明天再来~')
-                ]))
+                m = MessageChain.create(
+                    [At(member.id), Plain('你今天已经抽过签了，欢迎明天再来~')])
+                m.__root__[0].display = ''
+                await app.sendGroupMessage(group, m)
 
     # 瞎搞模块
     if msg.startswith("expand"):

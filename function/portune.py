@@ -15,7 +15,7 @@ from function.luck_type import luck_type
 from PIL import Image, ImageDraw, ImageFont
 
 from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Image as Img
+from graia.application.message.elements.internal import At, Image as Img
 
 sv_help = '''
 [抽签|人品|运势|抽凯露签]
@@ -33,7 +33,7 @@ Img_Path = './source/imgbase'
 
 
 # @sv.on_prefix(('抽签', '人品', '运势'), only_to_me=True)
-async def portune(app, group, model=''):
+async def portune(app, group: int, member: int, model=''):
     '''
     uid = ev.user_id
     if not lmt.check(uid):
@@ -47,9 +47,10 @@ async def portune(app, group, model=''):
 
     img = drawing_pic(model)
     img.save("./source/bak1.png")
-    await app.sendGroupMessage(group, MessageChain.create([
-        Img.fromLocalFile("./source/bak1.png")
-    ]))
+    m = MessageChain.create(
+        [At(member), Img.fromLocalFile("./source/bak1.png")])
+    m.__root__[0].display = ''
+    await app.sendGroupMessage(group, m)
 
 
 '''

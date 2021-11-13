@@ -92,6 +92,10 @@ async def sendHeartBeat(websocket, room_id):
 
 async def printDM(app, data, room_id):
     '''解析并输出数据包的数据'''
+    # 如果传入的data为null则直接返回
+    if not data:
+        return
+    
     # 获取数据包的长度，版本和操作类型
     packetLen = int(data[:4].hex(), 16)
     ver = int(data[6:8].hex(), 16)
@@ -175,19 +179,15 @@ def get_info(room_id: str):
     '''获取b站用户个人信息'''
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
     headers = {'user-Agent': user_agent}
-    url = 'https://live.bilibili.com/%s' % room_id
-    r = requests.get(url, headers=headers)
-    t = r.content.decode('utf-8')
-    l = t.split('''<script>window.__NEPTUNE_IS_MY_WAIFU__=''')
-    ll = l[1].split('''</script>''')
-    text = ll[0]
-    data_raw = json.loads(text)
 
-    uid = data_raw['roomInfoRes']['data']['room_info']['uid']
-    room_id = data_raw['roomInfoRes']['data']['room_info']['room_id']
-    title = data_raw['roomInfoRes']['data']['room_info']['title']
-    keyframe = data_raw['roomInfoRes']['data']['room_info']['keyframe']
-    uname = data_raw['roomInfoRes']['data']['anchor_info']['base_info']['uname']
+    url = 'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=%s' % room_id
+    data_raw = requests.get(url, headers=headers).json()
+
+    uid = data_raw['data']['room_info']['uid']
+    room_id = data_raw['data']['room_info']['room_id']
+    title = data_raw['data']['room_info']['title']
+    keyframe = data_raw['data']['room_info']['keyframe']
+    uname = data_raw['data']['anchor_info']['base_info']['uname']
 
     data = {'title': title,
             'user': uname,
