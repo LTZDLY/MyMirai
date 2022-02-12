@@ -2,10 +2,7 @@ import requests
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 
-token = "af0d842e99dcfd96ddc481593c1fd172"
-SESSDATA = "0657b11a%2C1626102289%2Ce4a13*11"
-bili_jct = "af0d842e99dcfd96ddc481593c1fd172"
-cookie = "SESSDATA=" + SESSDATA + "; bili_jct=" + bili_jct
+from function.data import cookie, token
 
 table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
 tr = {}
@@ -100,6 +97,7 @@ async def triple(app, group, msg: str):
         await app.sendGroupMessage(group, MessageChain.create([Plain("三连成功！")]))
     else:
         await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
+
 
 async def bilibili(app, group, msg: str):
     if (msg == "bilibili.signup"):

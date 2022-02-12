@@ -8,6 +8,8 @@ import requests
 from graia.application.message.chain import MessageChain
 from graia.application.message.elements.internal import Plain
 
+from function.data import pcr_cookie as cookie, pcr_token as token
+
 uprear = 7000
 srear = 25000
 rear = 180000
@@ -21,14 +23,13 @@ def short2name(data: Dict, short: str) -> str:
             return i["name"]
     return short
 
-token = "6sryLVjh-R1CBccj34RnhkPbiZfoUqHFl8c8"
-cookie = "sid=5pw0qear; DedeUserID=8012418; DedeUserID__ckMd5=ef5b68c1010b1761; UM_distinctid=178c6c73d2c995-0e8e05f4c727cd-c3f3568-144000-178c6c73d2d6b0; SESSDATA=a1a93904%2C1638719498%2C4037e*61; bili_jct=94385fca6a111c7e759e49ceab9290da; user-info=7930841; session-api=n9ne9dl61luv9h6c0or8rf4k80; _csrf=b2R5VyS9zFgnVm9f8jGVa8X6; CNZZDATA1275376637=1414155546-1600869121-%7C1625580605"
+
 async def dayReportCollect(app, group):
     url = "https://www.bigfun.cn/api/feweb?target=gzlj-clan-day-report-collect%2Fa"
     headers = {"cookie": cookie, "x_csrf_token": token}
     r = requests.get(url, headers=headers)
     life = {6000000: '1', 8000000: '2',
-            10000000: '3', 12000000: '4', 
+            10000000: '3', 12000000: '4',
             20000000: '5', 15000000: '5'}
     if (r.json()["code"] == 0):
         s = '公会名称：' + r.json()["data"]["clan_info"]["name"]\
@@ -209,6 +210,7 @@ async def findWorkDetails(app, group, msg: str):
         await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
     pass
 
+
 async def expand(app, group, msg: str):
     text = msg.split(' ')
     if(len(text) != 2):
@@ -223,6 +225,7 @@ async def expand(app, group, msg: str):
         await app.sendGroupMessage(group, MessageChain.create([Plain(text[1] + " 可能是 " + wanna + " 的缩写")]))
     else:
         await app.sendGroupMessage(group, MessageChain.create([Plain("并未查到是什么的缩写，是本名也说不定哦！")]))
+
 
 async def draw(app, group, upflag=False):
     Localpath = './data/pcrcharacter.json'
@@ -374,7 +377,8 @@ async def drawauto(app, group, msg: str, upflag=False):
                 num3 += 1
                 if not crt in star3get:
                     star3get[crt] = 1
-                else: star3get[crt] += 1
+                else:
+                    star3get[crt] += 1
             elif ran < normal:
                 out.append(random.choice(star1))
                 num1 += 1
@@ -393,7 +397,8 @@ async def drawauto(app, group, msg: str, upflag=False):
             num3 += 1
             if not crt in star3get:
                 star3get[crt] = 1
-            else: star3get[crt] += 1
+            else:
+                star3get[crt] += 1
         else:
             out.append(random.choice(star2))
             num2 += 1
@@ -525,6 +530,7 @@ async def setDefine(app, group, msg):
         fw.write(jsObj)
         fw.close()
 
+
 async def offDefine(app, group, msg):
     text = msg.split(' ')
     if(len(text) != 3):
@@ -550,6 +556,7 @@ async def offDefine(app, group, msg):
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
+
 
 def id2character(data: Dict, id: str) -> str:
     for i in data["data"]:

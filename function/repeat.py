@@ -14,20 +14,24 @@ async def repeat(app):
     h = t.hour
     d = t.day
     m = t.month
+    year = t.year
     sss = ''
-    if (d == 1 and m == 1) or (m == 2 and d == 12):
+    if (d == 1 and m == 1):  # 如果为公历或农历新年
         if h == 0:
-            sss = '切噜~！2021新年快乐！！新的一年也请多多指教哦！~☆'
+            sss = f'切噜~！{year}新年快乐！！新的一年也请多多指教哦！~☆'
         elif h == 7:
-            sss = '切噜~！已经七点了！2021年的第一天请不要睡懒觉噜！∑'
+            asyncio.create_task(sign(app, 372733015))
+            asyncio.create_task(readexcel(app, 958056260))
+            sss = f'切噜~！已经七点了！{year}年的第一天请不要睡懒觉噜！∑'
         elif h == 12:
-            sss = '切噜~！中午好！尽情地享受2021年的第一顿午饭吧！☆'
+            sss = f'切噜~！中午好！尽情地享受{year}年的第一顿午饭吧！☆'
         elif h == 13:
-            sss = '一点一点！2021年的第一个一点噜~！∑'
+            sss = f'一点一点！{year}年的第一个一点噜~！∑'
         elif h == 18:
-            sss = '切噜~！晚上好！2021年的第一天已经所剩无几了，接下来的时间也请尽情地享受呢噜！☆'
+            sss = f'切噜~！晚上好！{year}年的第一天已经所剩无几了，接下来的时间也请尽情地享受呢噜！☆'
         elif h == 23:
-            sss = '切噜~！23点啦！2021年的第一天就这么过去了呢！希望各位接下来的每一天都能过的如此愉快！晚安安！♡'
+            asyncio.create_task(sign(app, 372733015))
+            sss = f'切噜~！23点啦！{year}年的第一天就这么过去了呢！希望各位接下来的每一天都能过的如此愉快！晚安安！♡'
     else:
         if h == 7:
             asyncio.create_task(sign(app, 372733015))

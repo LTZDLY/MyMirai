@@ -162,6 +162,16 @@ class Image(InternalElement):
                         await app.revokeMessage(message.__root__[0].id)
                         return
 
+    # bot 退群指令
+    if member.id == hostqq and message.asDisplay() == "\\withdraw":
+        try:
+            await app.revokeMessage(message.__root__[0].id)
+            await app.kick(group, member)
+        except:
+            pass
+        await app.quit(group)
+        # TODO 将该群聊加入黑名单
+
     # help模块不支持转义
     if message.asDisplay() == "help":
         sstr = "功能列表：" + \
@@ -519,6 +529,33 @@ class Image(InternalElement):
         s = s.replace("选择 ", '', 1)
         msg = choice(s)
         await app.sendGroupMessage(group, MessageChain.fromSerializationString(msg))
+    if msg.startswith("选择"):# 多次选择
+        while msg.find('  ') != -1:
+            msg = msg.replace('  ', ' ')
+        pattern = re.compile(r'选择\d+')
+        p = pattern.findall(msg)
+        if p:
+            nn = int(p[0].replace('选择', ''))
+            if nn > 1000000:
+                await app.sendGroupMessage(group, MessageChain.create([Plain("选择次数太多选不了噜~")]))
+            else:
+                op = msg.split(' ')[1:]
+                if op[-1] == '':
+                    del op[-1]
+                if not op:
+                    await app.sendGroupMessage(group, MessageChain.create([Plain("选啥")]))
+                else:
+                    ans = [0] * len(op)
+                    for i in range(nn):
+                        while(True):
+                            a = random.randint(-1, len(op))
+                            if a != -1 and a != len(op):
+                                ans[a] += 1
+                                break
+                    sstr = '{}*{}'.format(op[0], ans[0])
+                    for i in range(1, len(op)):
+                        sstr += ', {}*{}'.format(op[i], ans[i])
+                    await app.sendGroupMessage(group, MessageChain.create([Plain("sstr")]))
 
     # echo模块
     if msg.startswith("echo ") and msg != "echo ":
@@ -585,17 +622,8 @@ class Image(InternalElement):
         if not 'p' in bed:
             bed['p'] = {}
         if not member.id in bed['p']:
-            bed['p'][member.id] = t
-            await portune(app, group)
-        else:
-            if bed['p'][member.id].date() != t.date():
-                bed['p'][member.id] = t
-                await portune(app, group.id, member.id)
-            else:
-                m = MessageChain.create(
-                    [At(member.id), Plain('你今天已经抽过签了，欢迎明天再来~')])
-                m.__root__[0].display = ''
-                await app.sendGroupMessage(group, m)
+            bed['p'][member.id] = [t, '', {}]
+        await portune(app, group, member.id, bed['p'][member.id])
 
     # 瞎搞模块
     if msg.startswith("expand"):

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import datetime
 import re
 import random
 import os
@@ -15,7 +16,7 @@ from function.luck_type import luck_type
 from PIL import Image, ImageDraw, ImageFont
 
 from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import At, Image as Img
+from graia.application.message.elements.internal import At, Image as Img, Plain
 
 sv_help = '''
 [抽签|人品|运势|抽凯露签]
@@ -33,7 +34,7 @@ Img_Path = './source/imgbase'
 
 
 # @sv.on_prefix(('抽签', '人品', '运势'), only_to_me=True)
-async def portune(app, group: int, member: int, model=''):
+async def portune(app, group: int, member: int, var, model=''):
     '''
     uid = ev.user_id
     if not lmt.check(uid):
@@ -45,10 +46,17 @@ async def portune(app, group: int, member: int, model=''):
     await bot.send(ev, pic, at_sender=True)
     '''
 
-    img = drawing_pic(model)
+    t = datetime.datetime.now() - datetime.timedelta(hours=4)
+    if var[0].date() != t.date():
+        var = [t, '', {}]
+
+    p = Plain('')
+    if var[1] and var[2]:
+        p = Plain('\n你今天已经抽过签了，这是你今天抽到的签，欢迎明天再来~\n')
+    img = drawing_pic(var, model)
     img.save("./source/bak1.png")
     m = MessageChain.create(
-        [At(member), Img.fromLocalFile("./source/bak1.png")])
+        [At(member), p, Img.fromLocalFile("./source/bak1.png")])
     m.__root__[0].display = ''
     await app.sendGroupMessage(group, m)
 
@@ -68,14 +76,21 @@ async def portune_kyaru(bot, ev):
 '''
 
 
-def drawing_pic(model='') -> Image:
+def drawing_pic(var=None, model='') -> Image:
+    if not var:
+        base_img = ''
+        text = {}
+    else:
+        base_img = var[1]
+        text = var[2]
+
     fontPath = {
         'title': './source/font/Mamelon.otf',
         'text': './source/font/sakura.ttf'
     }
     if model == 'KYARU':
         base_img = get_base_by_name("frame_1.jpg")
-    else:
+    elif not base_img:
         base_img = random_Basemap()
 
     filename = os.path.basename(base_img)
@@ -85,7 +100,15 @@ def drawing_pic(model='') -> Image:
     img = Image.open(base_img)
     # Draw title
     draw = ImageDraw.Draw(img)
-    text, title = get_info(charaid)
+
+    if not text:
+        text, title = get_info(charaid)
+    else:
+        title = get_luck_type(text)
+
+    if var:
+        var[1] = base_img
+        var[2] = text
 
     text = text['content']
     font_size = 45
