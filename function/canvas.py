@@ -33,7 +33,9 @@ def get_id(member_id: int) -> int:
         raise Exception("账号未记录")
 
 
-def createlink(qq: int) -> Session:
+# 登录分为三块，统一身份认证，canvas登录，course登录
+def ids_login(qq: int) -> Session:
+    """统一身份认证登录"""
     Ecom_User_ID = 0
     Ecom_Password = ''
 
@@ -52,7 +54,13 @@ def createlink(qq: int) -> Session:
         raise Exception("账号未记录")
 
     s = requests.session()
-    code = crack_main(s)
+    while(1):
+        try:
+            code = crack_main(s)
+            break
+        except:
+            print("裂了")
+            pass
     if code == None:
         raise Exception("验证码错误")
 
@@ -60,20 +68,74 @@ def createlink(qq: int) -> Session:
             'Ecom_Password': Ecom_Password, 'Ecom_Captche': code}
 
     s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)
+    return s
+
+
+# 第二部分，canvas登录，只需要一行代码
+def canvas_login(s: Session) -> Session:
+    """canvas登录"""
     s.get('http://canvas.tongji.edu.cn/login')
     return s
 
 
-def is_session(s: Session, member_id: int) -> Session:
-    url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
-        datetime.now().strftime('%Y-%m-%d')
-    r = s.get(url)
-    data = json.loads(r.text.replace('while(1);', ''))
-    if 'error' in data or r.status_code == 401:
-        print("检测到canvas登录状态丢失，现尝试重新登录canvas")
-        s.close()
-        s = createlink(member_id)
+courses_data = {}
+
+
+# 第三部分，courses登录
+def courses_login(s: Session, qq: int) -> Session:
+    """courses登录"""
+    ss = s.get("https://ids.tongji.edu.cn:8443/nidp/oauth/nam/authz?scope=profile&response_type=code&redirect_uri=https%3A%2F%2Fcourses.tongji.edu.cn%2Fsign-in&client_id=241129f4-7528-4207-8751-ee240727b41c")
+    code = ss.url.split("code=")[1].split("&")[0]
+    data = {"user_token": None, "code": code}
+    ss = s.post("https://courses.tongji.edu.cn/tmbs/api/v1/sso", data=data)
+    token = ss.json()["data"]["token"]
+    courses_data[qq] = (code, token)
+    print(courses_data[qq])
     return s
+
+
+# ids登录失效检测
+def ids_session(s: Session, qq: int) -> Session:
+    ss = s.post('https://ids.tongji.edu.cn:8443/nidp/app/login')
+    print(ss.text)
+    t = ss.text
+    if t.find("document.forms[0].submit()") != -1:
+        print("检测到统一身份认证登录状态丢失，现尝试重新登录统一身份认证")
+        s.close()
+        return ids_login(qq)
+    else:
+        return s
+
+
+# canvas登录失效检测
+def canvas_session(s: Session, qq: int):
+    url = f"http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date={datetime.now().strftime('%Y-%m-%d')}"
+    r = s.get(url)
+    if r.status_code == 401:
+        print("检测到canvas登录状态丢失，现尝试重新登录canvas")
+        s = ids_session(s, qq)
+        return canvas_login(s)
+    else:
+        return s
+
+
+# courses登录失效检测
+def courses_session(s: Session, qq: int):
+    if qq not in courses_data:
+        s = ids_session(s, qq)
+        return courses_login(s, qq)
+    
+    token = courses_data[qq][1]
+    date = datetime.now().date()
+    data = {"user_token": token, "start": date, "end": date}
+    url = "https://courses.tongji.edu.cn/tmbs/api/v1/user/calendar/my"
+    r = s.post(url, data=data)
+    if r.status_code == 401:
+        print("检测到courses登录状态丢失，现尝试重新登录courses")
+        s = ids_session(s, qq)
+        return courses_login(s, qq)
+    else:
+        return s
 
 
 def add_person(qq_id, id, password):
@@ -89,7 +151,7 @@ def add_person(qq_id, id, password):
 
     sss = (s.post('https://ids.tongji.edu.cn:8443/nidp/app/login', data=data)).text
 
-    if sss.find("账号状态需要更新，请先执行更新操作！") != -1:
+    if sss.find("账号状态需要激活，请先执行激活操作！") != -1:
         raise Exception("密码错误")
 
     user_id = 0
@@ -120,24 +182,24 @@ def add_person(qq_id, id, password):
     pass
 
 
-def calender(member):  # 这块好像并没有使用需求
-    s = createlink(member.id)
-    url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events?type=assignment&context_codes%5B%5D=course_30663&context_codes%5B%5D=course_31391&start_date=2020-10-25T16%3A00%3A00.000Z&end_date=2021-02-06T16%3A00%3A00.000Z&per_page=50&context_codes%5B%5D=user_' + \
-        str(get_id(member.id))
-    r = s.get(url)
-    data = json.loads(r.text.replace('while(1);', ''))
-    s = ''
-    for i in data:
-        s += '\n标题：' + i['title']
-        if 'assignment_overrides' in i:
-            s += '\n课程：' + i['assignment_overrides'][0]['title']
-        s += '\nddl：' + i['all_day_date']
-        if i['created_at'][:10] == i['updated_at'][:10]:
-            s += '（未完成）'
-        else:
-            s += '（已完成）'
-    print(s)
-    pass
+# def calender(member):  # 这块好像并没有使用需求
+#     s = createlink(member.id)
+#     url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events?type=assignment&context_codes%5B%5D=course_30663&context_codes%5B%5D=course_31391&start_date=2020-10-25T16%3A00%3A00.000Z&end_date=2021-02-06T16%3A00%3A00.000Z&per_page=50&context_codes%5B%5D=user_' + \
+#         str(get_id(member.id))
+#     r = s.get(url)
+#     data = json.loads(r.text.replace('while(1);', ''))
+#     s = ''
+#     for i in data:
+#         s += '\n标题：' + i['title']
+#         if 'assignment_overrides' in i:
+#             s += '\n课程：' + i['assignment_overrides'][0]['title']
+#         s += '\nddl：' + i['all_day_date']
+#         if i['created_at'][:10] == i['updated_at'][:10]:
+#             s += '（未完成）'
+#         else:
+#             s += '（已完成）'
+#     print(s)
+#     pass
 
 
 async def timetable(app, s, group, member, flag=True):
@@ -313,9 +375,25 @@ def markunfinsh():
     pass
 
 
+async def courses_calender(app, s, group, member):
+    token = courses_data[member.id][1]
+    date = datetime.now().date()
+    data = {"user_token": token, "start": date, "end": date}
+    c = s.post(
+        "https://courses.tongji.edu.cn/tmbs/api/v1/user/calendar/my", data=data)
+    cc = c.json()["data"]
+    cc.sort(key=lambda x: x['start'])
+    sstr = ""
+    for i in cc:
+        sstr += f"{i['start'][11:16]} - {i['end'][11:16]}\n"
+        sstr += i['title']
+        sstr += '\n\n'
+    await app.sendGroupMessage(group, MessageChain.create([Plain(sstr[:-2])]))
+
+
 async def canvas(app, group, member, msg, s: Session):
     try:
-        s = is_session(s, member.id)
+        s = canvas_session(s, member.id)
     except Exception as e:
         if str(e) == "验证码错误":
             await app.sendGroupMessage(group, MessageChain.create([Plain(
@@ -332,3 +410,23 @@ async def canvas(app, group, member, msg, s: Session):
         await delddl(app, s, group, member, msg)
     if msg.startswith('canvas.todo.makfin'):
         await markfinish(app, s, group, member, msg)
+
+
+async def courses(app, group, member, msg, s: Session):
+    # 不需要登录
+
+    # 需要登录
+    try:
+        s = courses_session(s, member.id)
+    except Exception as e:
+        if str(e) == "验证码错误":
+            await app.sendGroupMessage(group, MessageChain.create([Plain(
+                '登录超时，请稍后再试。'
+            )]))
+        return
+    if msg == 'courses.today':
+        await courses_calender(app, s, group, member)
+
+# if __name__ == "__main__":
+#     s = createlink(349468958)
+#     pass

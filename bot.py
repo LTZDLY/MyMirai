@@ -5,6 +5,7 @@ import os
 import random
 import re
 
+import requests
 from graia.application import GraiaMiraiApplication, Session
 from graia.application.entry import (BotMuteEvent, FriendMessage, GroupMessage,
                                      MemberMuteEvent, MemberUnmuteEvent)
@@ -18,10 +19,9 @@ from graia.application.message.elements.internal import At, Plain, Quote, Voice
 from graia.broadcast import Broadcast
 from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
-import requests
 
 from function.bilibili import bilibili
-from function.canvas import add_person, canvas, createlink
+from function.canvas import add_person, canvas, courses, ids_login
 from function.cherugo import cheru2str, str2cheru
 from function.danmaku import entrence, get_info, livewrite
 from function.excel import readexcel
@@ -412,13 +412,35 @@ class Image(InternalElement):
                     break
 
     # canvas任务爬取模块
+    global sess
     if msg.startswith('canvas.'):
-        global sess
         try:
             if member.id not in sess:
-                temp = createlink(member.id)
+                temp = ids_login(member.id)
                 sess[member.id] = temp
             await canvas(app, group, member, msg, sess[member.id])
+        except Exception as e:
+            if str(e) == "账号未记录":
+                await app.sendGroupMessage(group, MessageChain.create([Plain(
+                    '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
+                    '注意：在此之前请检查您是否与bot互为好友'
+                )]))
+            elif str(e) == "验证码错误":
+                await app.sendGroupMessage(group, MessageChain.create([Plain(
+                    '登录超时，请稍后再试。'
+                )]))
+            else:
+                print(e)
+                print(str(e))
+                print(e.args)
+                print(repr(e))
+
+    if msg.startswith('courses.'):
+        try:
+            if member.id not in sess:
+                temp = ids_login(member.id)
+                sess[member.id] = temp
+            await courses(app, group, member, msg, sess[member.id])
         except Exception as e:
             if str(e) == "账号未记录":
                 await app.sendGroupMessage(group, MessageChain.create([Plain(
@@ -529,7 +551,7 @@ class Image(InternalElement):
         s = s.replace("选择 ", '', 1)
         msg = choice(s)
         await app.sendGroupMessage(group, MessageChain.fromSerializationString(msg))
-    if msg.startswith("选择"):# 多次选择
+    if msg.startswith("选择"):  # 多次选择
         while msg.find('  ') != -1:
             msg = msg.replace('  ', ' ')
         pattern = re.compile(r'选择\d+')
