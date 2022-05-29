@@ -4,22 +4,25 @@ import json
 import os
 import random
 import re
+import traceback
 
 import requests
-from graia.application import GraiaMiraiApplication, Session
-from graia.application.entry import (BotMuteEvent, FriendMessage, GroupMessage,
-                                     MemberMuteEvent, MemberUnmuteEvent)
-from graia.application.event.lifecycle import ApplicationLaunched
-from graia.application.event.messages import TempMessage
-from graia.application.event.mirai import BotLeaveEventKick
-from graia.application.friend import Friend
-from graia.application.group import Group, Member
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import At, Plain, Quote, Voice
+from graia.ariadne.app import Ariadne
+from graia.ariadne.entry import Friend, Group, Member, MiraiSession
+from graia.ariadne.event.lifecycle import ApplicationLaunched
+from graia.ariadne.event.message import (FriendMessage, GroupMessage,
+                                         TempMessage)
+from graia.ariadne.event.mirai import (BotLeaveEventKick, BotMuteEvent,
+                                       MemberMuteEvent, MemberUnmuteEvent)
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import (At, Forward, ForwardNode, Plain,
+                                           Quote, Voice)
 from graia.broadcast import Broadcast
 from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
 
+from function.arknights import (arkexpand, arkoffDefine, arkRecruit,
+                                arksetDefine, search_items, search_stages)
 from function.bilibili import bilibili
 from function.canvas import add_person, canvas, courses, ids_login
 from function.cherugo import cheru2str, str2cheru
@@ -46,57 +49,47 @@ sess = {}
 bed = {}
 rep = {}
 
-loop = asyncio.get_event_loop()
-
-bcc = Broadcast(loop=loop)
-app = GraiaMiraiApplication(
-    broadcast=bcc,
-    connect_info=Session(
-        host="http://localhost:8098",  # 填入 httpapi 服务运行的地址
-        authKey="LLSShinoai",  # 填入 authKey
-        account=1424912867,  # 你的机器人的 qq 号
-        websocket=True  # Graia 已经可以根据所配置的消息接收的方式来保证消息接收部分的正常运作.
-    )
-)
-inc = InterruptControl(bcc)
+app = Ariadne(MiraiSession(host="http://localhost:8098",
+                           verify_key="LLSShinoai", account=1424912867))
+inc = InterruptControl(app.broadcast)
 
 mygroup = 958056260
 hostqq = 349468958
 
 
-@bcc.receiver(FriendMessage)
-async def friend_message_handler(app: GraiaMiraiApplication, message: MessageChain, friend: Friend):
+@app.broadcast.receiver("FriendMessage")
+async def friend_message_handler(app: Ariadne, message: MessageChain, friend: Friend):
     if message.asDisplay() == "切噜":
         await app.sendFriendMessage(friend, MessageChain.create([Plain('切噜~♪')]))
     if (friend.id != hostqq):
         message_a = MessageChain.create([
             Plain('%s(%d)向您发送消息：\n' % (friend.nickname, friend.id))])
-        message_a.plus(message.asSendable())
+        message_a.extend(message.asSendable())
         await app.sendFriendMessage(hostqq, message_a)
         return
     # TODO 移植cq中最高权限的私聊指令
     await priv_handler(app, message)
 
 
-@bcc.receiver(TempMessage)
-async def temp_message_handler(app: GraiaMiraiApplication, message: MessageChain, sender: Member):
+@app.broadcast.receiver("TempMessage")
+async def temp_message_handler(app: Ariadne, message: MessageChain, sender: Member):
     message_a = MessageChain.create([
         Plain('%s(%d)向您发送消息：\n' % (sender.name, sender.id))])
-    message_a.plus(message.asSendable())
+    message_a.extend(message.asSendable())
     await app.sendFriendMessage(hostqq, message_a)
 
 ti = 0
 
 
-@bcc.receiver(GroupMessage)
-async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
+@app.broadcast.receiver("GroupMessage")
+async def group_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     # 监听事件永远最优先
     if (member.id != hostqq):
-        if(atme(message.asSerializationString())):
+        if(atme(message.asPersistentString())):
             message_a = MessageChain.create([
                 Plain("消息监听：\n%s(%d)在%s(%d)中可能提到了我：\n" % (member.name, member.id, group.name, group.id))])
             message_b = message.asSendable()
-            message_a.plus(message_b)
+            message_a.extend(message_b)
             for i in range(0, len(message_a.__root__)):
                 if message_a.__root__[i].type == 'At':
                     message_a.__root__[i] = Plain(
@@ -118,582 +111,664 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     if (int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0):
         return
 
-    # 复读
-    # 这里我直接对Image类的源码直接进行了修改，重载==运算符使得图片可以进行复读，修改如下：
-    # 增加了几行代码：
+    try:
+        # 复读
+        # 这里我直接对Image类的源码直接进行了修改，重载==运算符使得图片可以进行复读，修改如下：
+        # 增加了几行代码：
 
-    '''
+        '''
 
-class Image(InternalElement):
-    
-    ---
+    class Image(InternalElement):
 
-    def __eq__(self, other) -> bool:
-        if other.__class__.__name__ == 'Image':
-            return (self.imageId == other.imageId)
+        ---
+
+        def __eq__(self, other) -> bool:
+            if other.__class__.__name__ == 'Image':
+                return (self.imageId == other.imageId)
+            else:
+                return False
+
+        ---
+
+        '''
+
+        if group.id not in rep:
+            rep[group.id] = [message.__root__[1:], 1]
         else:
-            return False
-    
-    ---
+            message_a = message.__root__[1:]
+            if rep[group.id][0] == message_a:
+                rep[group.id][1] += 1
+            else:
+                rep[group.id] = [message_a, 1]
+            if rep[group.id][1] == 3:
+                await app.sendGroupMessage(group, MessageChain.create(message_a))
 
-    '''
+        # bot撤回指令，不支持转义
+        if message.has(Quote):
+            for at in message.get(Quote):
+                for msg in message.get(Plain):
+                    msg.text = msg.text.replace(' ', '')
+                    if msg.text == '':
+                        continue
+                    if msg.text == 'recall':
+                        if permissionflag > 0:
+                            await app.recallMessage(at.id)
+                            await app.recallMessage(message.__root__[0].id)
+                            return
 
-    if group.id not in rep:
-        rep[group.id] = [message.__root__[1:], 1]
-    else:
-        message_a = message.__root__[1:]
-        if rep[group.id][0] == message_a:
-            rep[group.id][1] += 1
-        else:
-            rep[group.id] = [message_a, 1]
-        if rep[group.id][1] == 3:
-            await app.sendGroupMessage(group, MessageChain.create(message_a))
+        # bot 退群指令
+        if member.id == hostqq and message.asDisplay() == "\\withdraw":
+            try:
+                await app.revokeMessage(message.__root__[0].id)
+                await app.kick(group, member)
+            except:
+                pass
+            await app.quit(group)
+            # TODO 将该群聊加入黑名单
 
-    # bot撤回指令，不支持转义
-    if message.has(Quote):
-        for at in message.get(Quote):
-            for msg in message.get(Plain):
-                msg.text = msg.text.replace(' ', '')
-                if msg.text == '':
-                    continue
-                if msg.text == 'recall':
-                    if permissionflag > 0:
-                        await app.revokeMessage(at.id)
-                        await app.revokeMessage(message.__root__[0].id)
-                        return
-
-    # bot 退群指令
-    if member.id == hostqq and message.asDisplay() == "\\withdraw":
-        try:
-            await app.revokeMessage(message.__root__[0].id)
-            await app.kick(group, member)
-        except:
-            pass
-        await app.quit(group)
-        # TODO 将该群聊加入黑名单
-
-    # help模块不支持转义
-    if message.asDisplay() == "help":
-        sstr = "功能列表：" + \
-            "\n目前可以公开使用的模块有：" +\
-            "\n切噜语加密/解密：切噜语模块" +\
-            "\npcr：pcr模块" +\
-            "\npcrteam：pcr团队战模块" +\
-            "\n天气：天气模块" +\
-            "\n来点：图库模块" +\
-            "\nmute：禁言模块" +\
-            "\n订阅直播：b站直播间订阅模块" +\
-            "\n不可以公开使用的模块有：" +\
-            "\nbilibili：bilibili模块" +\
-            "\ncanvas：canvas模块" +\
-            "\ndanmaku：弹幕姬模块" +\
-            "\nswitch：开关模块" +\
-            "\ndefine：转义模块" +\
-            "\ntimer：报时模块"
-        await app.sendGroupMessage(group, MessageChain.create([
-            Plain(sstr)
-        ]))
-        return
-    if message.asDisplay().startswith('help '):
-        text = message.asDisplay().split(' ')
-        if(len(text) != 2):
-            return
-        sstr = ''
-        if text[1] == 'canvas':
-            sstr = 'canvas模块：校内专用与canvas进行对接' +\
-                '\n目前具有的指令如下：' + \
-                '\ncanvas.todo：获取当前未完成的所有ddl' +\
-                '\ncanvas.todo.finish：获取当前所有ddl，包括已完成' +\
-                '\ncanvas.todo.add 日期 标题：在日期的时间上添加名为标题的ddl' +\
-                '\ncanvas.todo.del 标题：删除找到的第一个符合该标题的ddl'
-        if text[1] == 'bilibili':
-            sstr = 'bilibili模块：私人专用' +\
-                '\n目前具有的指令如下：' + \
-                '\nbilibili.signup：b站直播中心每日签到' +\
-                '\nbilibili.get：开启直播间并获得推流码，直播默认分区单机联机' +\
-                '\nbilibili.end：关闭直播间' +\
-                '\nbilibili.change 标题：更改直播间标题' +\
-                '\nbilibili.triple AV号/BV号：三连视频'
-        if sstr != '':
+        # help模块不支持转义
+        if message.asDisplay() == "help":
+            sstr = "功能列表：" + \
+                "\n目前可以公开使用的模块有：" +\
+                "\n切噜语加密/解密：切噜语模块" +\
+                "\npcr：pcr模块" +\
+                "\npcrteam：pcr团队战模块" +\
+                "\n天气：天气模块" +\
+                "\n来点：图库模块" +\
+                "\nmute：禁言模块" +\
+                "\n订阅直播：b站直播间订阅模块" +\
+                "\n不可以公开使用的模块有：" +\
+                "\nbilibili：bilibili模块" +\
+                "\ncanvas：canvas模块" +\
+                "\ndanmaku：弹幕姬模块" +\
+                "\nswitch：开关模块" +\
+                "\ndefine：转义模块" +\
+                "\ntimer：报时模块"
             await app.sendGroupMessage(group, MessageChain.create([
                 Plain(sstr)
             ]))
-
-    # FIXME 用户向bot提供学号和密码用于登录canvas爬取数据
-    if message.asDisplay().startswith("canvas.apply"):
-        Localpath = './data/tongji.json'
-        data = {}
-        fr = open(Localpath, encoding='utf-8')
-        data = json.load(fr)
-        fr.close()
-
-        for i in data["data"]:
-            if i['qq'] == member.id:
-                m = MessageChain.create([At(member.id), Plain("您已在列表当中！")])
-                m.__root__[0].display = ''
-                await app.sendGroupMessage(group, m)
-                break
-        else:
-            try:
-                await app.sendFriendMessage(member.id, MessageChain.create([
-                    Plain("您即将向bot申请canvas爬取权限。这意味着：\n" +
-                          "您需要将自己统一身份认证的学号以及密码私聊发送至bot\n" +
-                          "我们可以保证您的学号和密码不会用于爬取canvas数据以外的地方\n" +
-                          "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
-                ]))
-            except:
-                m = MessageChain.create([At(member.id), Plain("您并不是bot好友！")])
-                m.__root__[0].display = ''
-                await app.sendGroupMessage(group, m)
-
-            global ti
-            ti = 0
-
-            @Waiter.create_using_function([FriendMessage], block_propagation=True)
-            async def waiter(event: FriendMessage, waiter_member: Friend, waiter_message: MessageChain):
-                global ti
-                if ti != 0:
-                    return event
-                if waiter_member.id == member.id:
-                    if waiter_message.asDisplay() != "/confirm":
-                        await app.sendFriendMessage(member.id, MessageChain.create([
-                            Plain("您取消了申请.")
-                        ]))
-                        return event
-                    await app.sendFriendMessage(member.id, MessageChain.create([
-                        Plain("请输入学号.")
-                    ]))
-                    ti += 1
-
-                    @Waiter.create_using_function([FriendMessage], block_propagation=True)
-                    async def waiter1(event1: FriendMessage, waiter1_member: Friend, waiter1_message: MessageChain):
-                        global ti
-                        if ti != 1:
-                            return event
-                        if waiter1_member.id == member.id:
-                            await app.sendFriendMessage(member.id, MessageChain.create([
-                                Plain("请输入密码.")
-                            ]))
-                            ti += 1
-
-                            @Waiter.create_using_function([FriendMessage], block_propagation=True)
-                            async def waiter2(event2: FriendMessage, waiter2_member: Friend, waiter2_message: MessageChain):
-                                global ti
-                                if ti != 2:
-                                    return event
-                                if waiter2_member.id == member.id:
-                                    id = int(waiter1_message.asDisplay())
-                                    password = waiter2_message.asDisplay()
-                                    try:
-                                        add_person(
-                                            waiter2_member.id, id, password)
-                                        await app.sendFriendMessage(member.id, MessageChain.create([
-                                            Plain("记录成功.")
-                                        ]))
-                                    except Exception as e:
-                                        if str(e) == "验证码错误":
-                                            await app.sendFriendMessage(member.id, MessageChain.create([
-                                                Plain("记录超时，请稍后再试.")
-                                            ]))
-                                        elif str(e) == "密码错误":
-                                            await app.sendFriendMessage(member.id, MessageChain.create([
-                                                Plain("记录失败，请检查学号密码是否正确.")
-                                            ]))
-                                    return event
-                            await inc.wait(waiter2)
-                            return event
-                    await inc.wait(waiter1)
-                    return event
-            await inc.wait(waiter)
             return
+        if message.asDisplay().startswith('help '):
+            text = message.asDisplay().split(' ')
+            if(len(text) != 2):
+                return
+            sstr = ''
+            if text[1] == 'canvas':
+                sstr = 'canvas模块：校内专用与canvas进行对接' +\
+                    '\n目前具有的指令如下：' + \
+                    '\ncanvas.todo：获取当前未完成的所有ddl' +\
+                    '\ncanvas.todo.finish：获取当前所有ddl，包括已完成' +\
+                    '\ncanvas.todo.add 日期 标题：在日期的时间上添加名为标题的ddl' +\
+                    '\ncanvas.todo.del 标题：删除找到的第一个符合该标题的ddl'
+            if text[1] == 'bilibili':
+                sstr = 'bilibili模块：私人专用' +\
+                    '\n目前具有的指令如下：' + \
+                    '\nbilibili.signup：b站直播中心每日签到' +\
+                    '\nbilibili.get：开启直播间并获得推流码，直播默认分区单机联机' +\
+                    '\nbilibili.end：关闭直播间' +\
+                    '\nbilibili.change 标题：更改直播间标题' +\
+                    '\nbilibili.triple AV号/BV号：三连视频'
+            if sstr != '':
+                await app.sendGroupMessage(group, MessageChain.create([
+                    Plain(sstr)
+                ]))
 
-    # TODO thunder模块移植并投入使用
+        # FIXME 用户向bot提供学号和密码用于登录canvas爬取数据
+        if message.asDisplay().startswith("canvas.apply"):
+            Localpath = './data/tongji.json'
+            data = {}
+            fr = open(Localpath, encoding='utf-8')
+            data = json.load(fr)
+            fr.close()
 
-    # bilibili私人模块不支持转义
-    if member.id == hostqq and message.asDisplay().startswith("bilibili"):
-        await bilibili(app, group, message.asDisplay())
-
-    if member.id == hostqq and message.asDisplay() == '生日测试':
-        await readexcel(app, 958056260)
-
-    msg = message.asDisplay()  # 存储转义
-    data = loadDefine()
-    for i in data:
-        if msg.find(i) == -1:
-            continue
-        # await app.sendGroupMessage(group, MessageChain.create([Plain('发生转义：\n' + i + '->' + data[i])]))
-        msg = msg.replace(i, data[i])
-    msgs = message.asSerializationString()
-    data = loadDefine()
-    for i in data:
-        if msgs.find(i) == -1:
-            continue
-        msgs = msgs.replace(i, data[i])
-
-    # 权限增删
-    if msg.startswith("set ") or msg.startswith("off "):
-        await setMain(app, member, group, msgs)
-
-    if (message.asDisplay() == '?' or message.asDisplay() == '？' or
-            message.asDisplay() == '草' or message.asDisplay() == '艹'):
-        flag = random.randint(0, 99)
-        num = random.randint(5, 94)
-        if(abs(flag - num) <= 5):
-            await app.sendGroupMessage(group, message.asSendable())
-
-    # TODO 实装通过bigfun实现的会战信息查询系统
-    if int(read_from_ini('data/switch.ini', str(group.id), 'pcrteam', '0')) == 1 and msg.startswith("pcrteam."):
-        await pcrteam(app, group, msg)
-    if (msg.startswith("pcr.")):
-        await pcr(app, group, msg)
-    '''
-    if msg == '110':
-        message = MessageChain.create([
-            Image.fromNetworkAddress('https://i0.hdslb.com/bfs/bigfun/99e465b59ddce9410aa8f5ae1a96a17da91736c4.png'),
-            Image.fromNetworkAddress('https://i0.hdslb.com/bfs/bigfun/90e102e603c4df5da446c7f9abad014b144f5836.png@150w_1o')
-        ])
-        await app.sendGroupMessage(group, message)
-    '''
-    # TODO 实装TouHouRoll机
-
-    # 直播订阅模块
-    global live
-    if msg.startswith("订阅直播 "):
-        room_id = msg.replace("订阅直播 ", '')
-
-        Localpath = './data/live.json'
-        data = {}
-        fr = open(Localpath, encoding='utf-8')
-        data = json.load(fr)
-        fr.close()
-
-        for i in data['data']:
-            if room_id == str(i['room_id']):
-                if group.id in i['group']:
-                    await app.sendGroupMessage(group, MessageChain.create([Plain("这个直播已经在被视奸啦！")]))
+            for i in data["data"]:
+                if i['qq'] == member.id:
+                    m = MessageChain.create([At(member.id), Plain("您已在列表当中！")])
+                    m.__root__[0].display = ''
+                    await app.sendGroupMessage(group, m)
                     break
-        else:
-            try:
-                if room_id not in live:
-                    live[room_id] = asyncio.create_task(
-                        entrence(app, room_id))
-                info = get_info(room_id)
-                await app.sendGroupMessage(group, MessageChain.create([Plain("开启对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
-                livewrite(group.id, int(room_id))
-            except:
-                await app.sendGroupMessage(group, MessageChain.create([Plain("开启直播视奸失败，请检查房间号")]))
-                del live[room_id]
+            else:
+                try:
+                    await app.sendFriendMessage(member.id, MessageChain.create([
+                        Plain("您即将向bot申请canvas爬取权限。这意味着：\n" +
+                              "您需要将自己统一身份认证的学号以及密码私聊发送至bot\n" +
+                              "我们可以保证您的学号和密码不会用于爬取canvas数据以外的地方\n" +
+                              "如果您确定要申请此功能，请向bot私聊发送 /confirm 以继续运行\n")
+                    ]))
+                except:
+                    m = MessageChain.create(
+                        [At(member.id), Plain("您并不是bot好友！")])
+                    m.__root__[0].display = ''
+                    await app.sendGroupMessage(group, m)
 
-    if msg.startswith('取消订阅 '):
-        room_id = msg.replace("取消订阅 ", '')
+                global ti
+                ti = 0
 
-        Localpath = './data/live.json'
-        data = {}
-        fr = open(Localpath, encoding='utf-8')
-        data = json.load(fr)
-        fr.close()
+                @Waiter.create_using_function([FriendMessage], block_propagation=True)
+                async def waiter(event: FriendMessage, waiter_member: Friend, waiter_message: MessageChain):
+                    global ti
+                    if ti != 0:
+                        return event
+                    if waiter_member.id == member.id:
+                        if waiter_message.asDisplay() != "/confirm":
+                            await app.sendFriendMessage(member.id, MessageChain.create([
+                                Plain("您取消了申请.")
+                            ]))
+                            return event
+                        await app.sendFriendMessage(member.id, MessageChain.create([
+                            Plain("请输入学号.")
+                        ]))
+                        ti += 1
 
-        for i in data['data']:
-            if room_id == str(i['room_id']):
-                if group.id in i['group']:
-                    if(len(i['group']) > 1):
-                        i['group'].remove(group.id)
-                    else:
-                        data['data'].remove(i)
-                        live[room_id].cancel()
-                        del live[room_id]
-                    with open(Localpath, "w") as fw:
-                        jsObj = json.dumps(data)
-                        fw.write(jsObj)
-                        fw.close()
-                    pass
+                        @Waiter.create_using_function([FriendMessage], block_propagation=True)
+                        async def waiter1(event1: FriendMessage, waiter1_member: Friend, waiter1_message: MessageChain):
+                            global ti
+                            if ti != 1:
+                                return event
+                            if waiter1_member.id == member.id:
+                                await app.sendFriendMessage(member.id, MessageChain.create([
+                                    Plain("请输入密码.")
+                                ]))
+                                ti += 1
+
+                                @Waiter.create_using_function([FriendMessage], block_propagation=True)
+                                async def waiter2(event2: FriendMessage, waiter2_member: Friend, waiter2_message: MessageChain):
+                                    global ti
+                                    if ti != 2:
+                                        return event
+                                    if waiter2_member.id == member.id:
+                                        id = int(waiter1_message.asDisplay())
+                                        password = waiter2_message.asDisplay()
+                                        try:
+                                            add_person(
+                                                waiter2_member.id, id, password)
+                                            await app.sendFriendMessage(member.id, MessageChain.create([
+                                                Plain("记录成功.")
+                                            ]))
+                                        except Exception as e:
+                                            if str(e) == "验证码错误":
+                                                await app.sendFriendMessage(member.id, MessageChain.create([
+                                                    Plain("记录超时，请稍后再试.")
+                                                ]))
+                                            elif str(e) == "密码错误":
+                                                await app.sendFriendMessage(member.id, MessageChain.create([
+                                                    Plain("记录失败，请检查学号密码是否正确.")
+                                                ]))
+                                        return event
+                                await inc.wait(waiter2)
+                                return event
+                        await inc.wait(waiter1)
+                        return event
+                await inc.wait(waiter)
+                return
+
+        # TODO thunder模块移植并投入使用
+
+        # bilibili私人模块不支持转义
+        if member.id == hostqq and message.asDisplay().startswith("bilibili"):
+            await bilibili(app, group, message.asDisplay())
+
+        if member.id == hostqq and message.asDisplay() == '生日测试':
+            await readexcel(app, 958056260)
+
+        msg = message.asDisplay()  # 存储转义
+        data = loadDefine()
+        for i in data:
+            if msg.find(i) == -1:
+                continue
+            # await app.sendGroupMessage(group, MessageChain.create([Plain('发生转义：\n' + i + '->' + data[i])]))
+            msg = msg.replace(i, data[i])
+        msgs = message.asPersistentString()
+        data = loadDefine()
+        for i in data:
+            if msgs.find(i) == -1:
+                continue
+            msgs = msgs.replace(i, data[i])
+
+        # 权限增删
+        if msg.startswith("set ") or msg.startswith("off "):
+            await setMain(app, member, group, msgs)
+
+        if (message.asDisplay() == '?' or message.asDisplay() == '？' or
+                message.asDisplay() == '草' or message.asDisplay() == '艹'):
+            flag = random.randint(0, 99)
+            num = random.randint(5, 94)
+            if(abs(flag - num) <= 5):
+                await app.sendGroupMessage(group, message.asSendable())
+
+        # TODO 实装通过bigfun实现的会战信息查询系统
+        if int(read_from_ini('data/switch.ini', str(group.id), 'pcrteam', '0')) == 1 and msg.startswith("pcrteam."):
+            await pcrteam(app, group, msg)
+        if (msg.startswith("pcr.")):
+            await pcr(app, group, msg)
+        '''
+        if msg == '110':
+            message = MessageChain.create([
+                Image.fromNetworkAddress('https://i0.hdslb.com/bfs/bigfun/99e465b59ddce9410aa8f5ae1a96a17da91736c4.png'),
+                Image.fromNetworkAddress('https://i0.hdslb.com/bfs/bigfun/90e102e603c4df5da446c7f9abad014b144f5836.png@150w_1o')
+            ])
+            await app.sendGroupMessage(group, message)
+        '''
+        # TODO 实装TouHouRoll机
+
+        # 直播订阅模块
+        global live
+        if msg.startswith("订阅直播 "):
+            room_id = msg.replace("订阅直播 ", '')
+
+            Localpath = './data/live.json'
+            data = {}
+            fr = open(Localpath, encoding='utf-8')
+            data = json.load(fr)
+            fr.close()
+
+            for i in data['data']:
+                if room_id == str(i['room_id']):
+                    if group.id in i['group']:
+                        await app.sendGroupMessage(group, MessageChain.create([Plain("这个直播已经在被视奸啦！")]))
+                        break
+            else:
+                try:
+                    if room_id not in live:
+                        live[room_id] = asyncio.create_task(
+                            entrence(app, room_id))
                     info = get_info(room_id)
-                    await app.sendGroupMessage(group, MessageChain.create([Plain("关闭对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
-                    break
+                    await app.sendGroupMessage(group, MessageChain.create([Plain("开启对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
+                    livewrite(group.id, int(room_id))
+                except:
+                    await app.sendGroupMessage(group, MessageChain.create([Plain("开启直播视奸失败，请检查房间号")]))
+                    del live[room_id]
 
-    # canvas任务爬取模块
-    global sess
-    if msg.startswith('canvas.'):
-        try:
-            if member.id not in sess:
-                temp = ids_login(member.id)
-                sess[member.id] = temp
-            await canvas(app, group, member, msg, sess[member.id])
-        except Exception as e:
-            if str(e) == "账号未记录":
-                await app.sendGroupMessage(group, MessageChain.create([Plain(
-                    '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
-                    '注意：在此之前请检查您是否与bot互为好友'
-                )]))
-            elif str(e) == "验证码错误":
-                await app.sendGroupMessage(group, MessageChain.create([Plain(
-                    '登录超时，请稍后再试。'
-                )]))
+        if msg.startswith('取消订阅 '):
+            room_id = msg.replace("取消订阅 ", '')
+
+            Localpath = './data/live.json'
+            data = {}
+            fr = open(Localpath, encoding='utf-8')
+            data = json.load(fr)
+            fr.close()
+
+            for i in data['data']:
+                if room_id == str(i['room_id']):
+                    if group.id in i['group']:
+                        if(len(i['group']) > 1):
+                            i['group'].remove(group.id)
+                        else:
+                            data['data'].remove(i)
+                            live[room_id].cancel()
+                            del live[room_id]
+                        with open(Localpath, "w") as fw:
+                            jsObj = json.dumps(data)
+                            fw.write(jsObj)
+                            fw.close()
+                        pass
+                        info = get_info(room_id)
+                        await app.sendGroupMessage(group, MessageChain.create([Plain("关闭对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
+                        break
+
+        # canvas任务爬取模块
+        global sess
+        if msg.startswith('canvas.'):
+            try:
+                if member.id not in sess:
+                    temp = ids_login(member.id)
+                    sess[member.id] = temp
+                await canvas(app, group, member, msg, sess[member.id])
+            except Exception as e:
+                if str(e) == "账号未记录":
+                    await app.sendGroupMessage(group, MessageChain.create([Plain(
+                        '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
+                        '注意：在此之前请检查您是否与bot互为好友'
+                    )]))
+                elif str(e) == "验证码错误":
+                    await app.sendGroupMessage(group, MessageChain.create([Plain(
+                        '登录超时，请稍后再试。'
+                    )]))
+                else:
+                    print(e)
+                    print(str(e))
+                    print(e.args)
+                    print(repr(e))
+
+        if msg.startswith('courses.'):
+            try:
+                if member.id not in sess:
+                    temp = ids_login(member.id)
+                    sess[member.id] = temp
+                await courses(app, group, member, msg, sess[member.id])
+            except Exception as e:
+                if str(e) == "账号未记录":
+                    await app.sendGroupMessage(group, MessageChain.create([Plain(
+                        '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
+                        '注意：在此之前请检查您是否与bot互为好友'
+                    )]))
+                elif str(e) == "验证码错误":
+                    await app.sendGroupMessage(group, MessageChain.create([Plain(
+                        '登录超时，请稍后再试。'
+                    )]))
+                else:
+                    print(e)
+                    print(str(e))
+                    print(e.args)
+                    print(repr(e))
+
+        # 天气模块
+        if msg.split(' ')[0].endswith('天气'):
+            await weather(app, inc, group, member, msg)
+
+        # TODO 4m3和1块钱公告爬取
+
+        if member.id == hostqq and msg.startswith("danmaku.end"):
+            t = live.get((group.id, member.id), None)
+            if t:
+                t.cancel()
+                await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸停止")]))
             else:
-                print(e)
-                print(str(e))
-                print(e.args)
-                print(repr(e))
+                m = MessageChain.create([At(hostqq), Plain("你并没有在视奸")])
+                m.__root__[0].display = ''
+                await app.sendGroupMessage(group, m)
 
-    if msg.startswith('courses.'):
-        try:
-            if member.id not in sess:
-                temp = ids_login(member.id)
-                sess[member.id] = temp
-            await courses(app, group, member, msg, sess[member.id])
-        except Exception as e:
-            if str(e) == "账号未记录":
-                await app.sendGroupMessage(group, MessageChain.create([Plain(
-                    '并没有记录任何学号信息，如需使用此功能请在群内发送 canvas.apply 以向bot申请。\n' +
-                    '注意：在此之前请检查您是否与bot互为好友'
-                )]))
-            elif str(e) == "验证码错误":
-                await app.sendGroupMessage(group, MessageChain.create([Plain(
-                    '登录超时，请稍后再试。'
-                )]))
+        # FIXME leetcode每日题库好像有点问题记得修
+        if msg == "leetcode.daily":
+            await get_daily(app, group)
+        if msg == "leetcode.rand":
+            await get_rand(app, group)
+        if msg == "luogu.rand":
+            await luogu_rand(app, group)
+        if msg == "签到":
+            await app.sendGroupMessage(group, MessageChain.create([Plain(signup(member.id))]))
+        # print(await app.getMember(group, 1424912867))
+        if permissionflag >= 1 and msg.startswith("mute"):
+            mute_member(app, group, message)
+
+        if msg.startswith("latex "):
+            await latex(app, group, msg)
+
+        if message.asDisplay().startswith("define "):
+            if(permissionCheck(member.id, group.id) == 3):
+                define(message.asDisplay())
+
+        if msg == "切噜":
+            await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
+
+            # 此处发语音功能限定文件格式为silk，并且对框架具有一定版本要求，并且音质贼差
+            filePath = './source/audio/cheru/'
+            for i, j, k in os.walk(filePath):
+                file = filePath + k[random.randint(0, len(k) - 1)]
+            await app.sendGroupMessage(group, MessageChain.create([Voice(path=file)]))
+
+        # 切噜语模块
+        if msg.startswith("切噜语加密 "):
+            s = msg.replace("切噜语加密 ", '', 1)
+            if len(s) > 500:
+                msg = '切、切噜太长切不动勒切噜噜...'
             else:
-                print(e)
-                print(str(e))
-                print(e.args)
-                print(repr(e))
-
-    # 天气模块
-    if msg.split(' ')[0].endswith('天气'):
-        await weather(app, inc, group, member, msg)
-
-    # TODO 4m3和1块钱公告爬取
-
-    if member.id == hostqq and msg.startswith("danmaku.end"):
-        t = live.get((group.id, member.id), None)
-        if t:
-            t.cancel()
-            await app.sendGroupMessage(group, MessageChain.create([Plain("直播视奸停止")]))
-        else:
-            m = MessageChain.create([At(hostqq), Plain("你并没有在视奸")])
+                msg = '切噜~♪' + str2cheru(s)
+            await app.sendGroupMessage(group, MessageChain.create([Plain(msg)]))
+        elif msg.startswith("切噜语解密"):
+            s = msg.replace("切噜语解密 切噜~♪", '', 1)
+            if s == '':
+                return
+            msg = cheru2str(s)
+            m = MessageChain.create([At(member.id), Plain(msg)])
             m.__root__[0].display = ''
             await app.sendGroupMessage(group, m)
 
-    # FIXME leetcode每日题库好像有点问题记得修
-    if msg == "leetcode.daily":
-        await get_daily(app, group)
-    if msg == "leetcode.rand":
-        await get_rand(app, group)
-    if msg == "luogu.rand":
-        await luogu_rand(app, group)
-    if msg == "签到":
-        await app.sendGroupMessage(group, MessageChain.create([Plain(signup(member.id))]))
-    # print(await app.getMember(group, 1424912867))
-    if permissionflag >= 1 and msg.startswith("mute"):
-        mute_member(app, group, message)
+        # 图库模块
+        if msg.startswith("来点"):
+            # FIXME 啊啊啊啊啊啊我TM一不小心把图库给删了啊啊啊啊啊啊
+            await seImage(app, group, msg)
 
-    if msg.startswith("latex "):
-        await latex(app, group, msg)
+        if msg.startswith("举牌 "):
+            text = msg.split(' ')
+            if len(text) >= 2:
+                txt = text[1]
+                for i in text[2:]:
+                    txt += ' ' + i
+            await ouen(app, txt, group)
 
-    if message.asDisplay().startswith("define "):
-        if(permissionCheck(member.id, group.id) == 3):
-            define(message.asDisplay())
-
-    if msg == "切噜":
-        await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
-
-        # 此处发语音功能限定文件格式为silk，并且对框架具有一定版本要求，并且音质贼差
-        filePath = './source/audio/cheru/'
-        for i, j, k in os.walk(filePath):
-            file = filePath + k[random.randint(0, len(k) - 1)]
-        print(file)
-        await app.sendGroupMessage(group, MessageChain.create([Voice.fromLocalFile(0, filepath=file)]))
-
-    # 切噜语模块
-    if msg.startswith("切噜语加密 "):
-        s = msg.replace("切噜语加密 ", '', 1)
-        if len(s) > 500:
-            msg = '切、切噜太长切不动勒切噜噜...'
-        else:
-            msg = '切噜~♪' + str2cheru(s)
-        await app.sendGroupMessage(group, MessageChain.create([Plain(msg)]))
-    elif msg.startswith("切噜语解密"):
-        s = msg.replace("切噜语解密 切噜~♪", '', 1)
-        if s == '':
-            return
-        msg = cheru2str(s)
-        m = MessageChain.create([At(member.id), Plain(msg)])
-        m.__root__[0].display = ''
-        await app.sendGroupMessage(group, m)
-
-    # 图库模块
-    if msg.startswith("来点"):
-        # FIXME 啊啊啊啊啊啊我TM一不小心把图库给删了啊啊啊啊啊啊
-        await seImage(app, group, msg)
-
-    if msg.startswith("举牌 "):
-        text = msg.split(' ')
-        if len(text) >= 2:
-            txt = text[1]
-            for i in text[2:]:
-                txt += ' ' + i
-        await ouen(app, txt, group)
-
-    # 选择模块
-    if msg.startswith("choice "):
-        ss = msgs.split(']', 1)
-        s = ss[1]
-        while s.find('  ') != -1:
-            s = s.replace('  ', ' ')
-        s = s.replace("choice ", '', 1)
-        msg = choice(s)
-        await app.sendGroupMessage(group, MessageChain.fromSerializationString(msg))
-    if msg.startswith("选择 "):
-        print(message.__root__)
-        ss = msgs.split(']', 1)
-        s = ss[1]
-        while s.find('  ') != -1:
-            s = s.replace('  ', ' ')
-        s = s.replace("选择 ", '', 1)
-        msg = choice(s)
-        await app.sendGroupMessage(group, MessageChain.fromSerializationString(msg))
-    if msg.startswith("选择"):  # 多次选择
-        while msg.find('  ') != -1:
-            msg = msg.replace('  ', ' ')
-        pattern = re.compile(r'选择\d+')
-        p = pattern.findall(msg)
-        if p:
-            nn = int(p[0].replace('选择', ''))
-            if nn > 1000000:
-                await app.sendGroupMessage(group, MessageChain.create([Plain("选择次数太多选不了噜~")]))
-            else:
-                op = msg.split(' ')[1:]
-                if op[-1] == '':
-                    del op[-1]
-                if not op:
-                    await app.sendGroupMessage(group, MessageChain.create([Plain("选啥")]))
+        # 选择模块
+        if msg.startswith("choice "):
+            ss = msgs.split(']', 1)
+            s = ss[1]
+            while s.find('  ') != -1:
+                s = s.replace('  ', ' ')
+            s = s.replace("choice ", '', 1)
+            msg = choice(s)
+            await app.sendGroupMessage(group, MessageChain.fromPersistentString(msg))
+        if msg.startswith("选择 "):
+            print(message.__root__)
+            print(msgs)
+            s = msgs
+            while s.find('  ') != -1:
+                s = s.replace('  ', ' ')
+            s = s.replace("选择 ", '', 1)
+            msg = choice(s)
+            await app.sendGroupMessage(group, MessageChain.fromPersistentString(msg))
+        if msg.startswith("选择"):  # 多次选择
+            while msg.find('  ') != -1:
+                msg = msg.replace('  ', ' ')
+            pattern = re.compile(r'选择\d+')
+            p = pattern.findall(msg)
+            if p:
+                nn = int(p[0].replace('选择', ''))
+                if nn > 1000000:
+                    await app.sendGroupMessage(group, MessageChain.create([Plain("选择次数太多选不了噜~")]))
                 else:
-                    ans = [0] * len(op)
-                    for i in range(nn):
-                        while(True):
-                            a = random.randint(-1, len(op))
-                            if a != -1 and a != len(op):
-                                ans[a] += 1
-                                break
-                    sstr = '{}*{}'.format(op[0], ans[0])
-                    for i in range(1, len(op)):
-                        sstr += ', {}*{}'.format(op[i], ans[i])
-                    await app.sendGroupMessage(group, MessageChain.create([Plain("sstr")]))
+                    op = msg.split(' ')[1:]
+                    if op[-1] == '':
+                        del op[-1]
+                    if not op:
+                        await app.sendGroupMessage(group, MessageChain.create([Plain("选啥")]))
+                    else:
+                        ans = [0] * len(op)
+                        for i in range(nn):
+                            while(True):
+                                a = random.randint(-1, len(op))
+                                if a != -1 and a != len(op):
+                                    ans[a] += 1
+                                    break
+                        sstr = '{}*{}'.format(op[0], ans[0])
+                        for i in range(1, len(op)):
+                            sstr += ', {}*{}'.format(op[i], ans[i])
+                        await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
 
-    # echo模块
-    if msg.startswith("echo ") and msg != "echo ":
-        message_a = message
-        message_a.__root__[1].text = message_a.__root__[
-            1].text.replace('echo ', '', 1)
-        await app.sendGroupMessage(group, message_a.asSendable())
-        pass
+        # echo模块
+        if msg.startswith("echo ") and msg != "echo ":
+            message_a = message
+            message_a.__root__[1].text = message_a.__root__[
+                1].text.replace('echo ', '', 1)
+            await app.sendGroupMessage(group, message_a.asSendable())
+            pass
 
-    if message.asDisplay().find("后提醒我") != -1:
-        await remindme(app, group.id, member.id, message)
+        if message.asDisplay().find("后提醒我") != -1:
+            await remindme(app, group.id, member.id, message)
 
-    mmm = message.asSerializationString()
-    if mmm.find('[mirai:at:%d' % app.connect_info.account) != -1:
-        text = mmm.split(' ')
-        if len(text) == 2:
-            if text[1] == '起床':
-                t = datetime.datetime.now() - datetime.timedelta(hours=4)
-                if group.id not in bed:
-                    bed[group.id] = {}
-                if member.id not in bed[group.id] or bed[group.id][member.id][0].date() != t.date():
-                    bed[group.id][member.id] = [t, 'on']
-                else:
-                    ss = '你今天已经起床过了哟！'
-                    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
-                    return
+        mmm = message.asPersistentString()
+        if mmm.find('[mirai:At:{"target":%d' % app.account) != -1:
+            text = mmm.split(' ')
+            if len(text) == 2:
+                if text[1] == '起床':
+                    t = datetime.datetime.now() - datetime.timedelta(hours=4)
+                    if group.id not in bed:
+                        bed[group.id] = {}
+                    if member.id not in bed[group.id] or bed[group.id][member.id][0].date() != t.date():
+                        bed[group.id][member.id] = [t, 'on']
+                    else:
+                        ss = '你今天已经起床过了哟！'
+                        await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                        return
 
-                if 'live_number' not in bed[group.id]:
-                    bed[group.id]['live_number'] = 1
-                else:
-                    bed[group.id]['live_number'] += 1
-                if 'day' not in bed:
-                    bed['day'] = t.date()
-                else:
-                    tb = bed['day']
-                    if t.date() != tb:
+                    if 'live_number' not in bed[group.id]:
                         bed[group.id]['live_number'] = 1
-                    bed['day'] = t.date()
-                ss = '你是今天第%d个起床的群友哦！' % bed[group.id]['live_number']
-                await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
-                return
-            elif text[1] == '睡觉':
-                t = datetime.datetime.now() - datetime.timedelta(hours=4)
-                if group.id not in bed:
-                    ss = '你今天还没有起过床哟！'
-                elif member.id not in bed[group.id]:
-                    ss = '你今天还没有起过床哟！'
-                elif bed[group.id][member.id][0].date() != t.date():
-                    ss = '你今天还没有起过床哟！'
-                elif bed[group.id][member.id][1] == 'off':
-                    ss = '你已经睡觉了哟！'
-                else:
-                    td = t - bed[group.id][member.id][0]
-                    ss = '你今天清醒了%s哟！' % time_to_str(int(td.total_seconds()))
-                    bed[group.id][member.id] = [t, 'off']
+                    else:
+                        bed[group.id]['live_number'] += 1
+                    if 'day' not in bed:
+                        bed['day'] = t.date()
+                    else:
+                        tb = bed['day']
+                        if t.date() != tb:
+                            bed[group.id]['live_number'] = 1
+                        bed['day'] = t.date()
+                    ss = '你是今天第%d个起床的群友哦！' % bed[group.id]['live_number']
                     await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
                     return
-                await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                elif text[1] == '睡觉':
+                    t = datetime.datetime.now() - datetime.timedelta(hours=4)
+                    if group.id not in bed:
+                        ss = '你今天还没有起过床哟！'
+                    elif member.id not in bed[group.id]:
+                        ss = '你今天还没有起过床哟！'
+                    elif bed[group.id][member.id][0].date() != t.date():
+                        ss = '你今天还没有起过床哟！'
+                    elif bed[group.id][member.id][1] == 'off':
+                        ss = '你已经睡觉了哟！'
+                    else:
+                        td = t - bed[group.id][member.id][0]
+                        ss = '你今天清醒了%s哟！' % time_to_str(
+                            int(td.total_seconds()))
+                        bed[group.id][member.id] = [t, 'off']
+                        await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                        return
+                    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+                    return
+
+        # pcr运势模块
+        if message.asDisplay().startswith("运势"):
+            t = datetime.datetime.now() - datetime.timedelta(hours=4)
+            if not 'p' in bed:
+                bed['p'] = {}
+            if not member.id in bed['p']:
+                bed['p'][member.id] = [t, '', {}]
+            await portune(app, group, member.id, bed['p'][member.id])
+
+        # 明日方舟模块
+        if msg.startswith('搜索作战 '):
+            text = msg.split(' ')
+            flag = False
+            print(text)
+            if len(text) > 2:
+                if "是" == text[2] or text[2] == "全部":
+                    flag = True
+            await app.sendGroupMessage(group, MessageChain.create([Plain(search_stages(text[1], flag))]))
+
+        if msg.startswith('搜索素材 '):
+            text = msg.split(' ')
+            start = 0
+            end = 5
+            if len(text) == 3:
+                end = int(text[2])
+            if len(text) == 4:
+                start = int(text[2])
+                end = int(text[3])
+            if start > end:
+                start, end = end, start
+            await app.sendGroupMessage(group, MessageChain.create([Plain(search_items(text[1], end, start))]))
+        if msg.startswith('添加缩写 '):
+            await app.sendGroupMessage(group, MessageChain.create([Plain(arksetDefine(msg))]))
+        if msg.startswith('删除缩写 '):
+            await app.sendGroupMessage(group, MessageChain.create([Plain(arkoffDefine(msg))]))
+        if msg.startswith('查询缩写 '):
+            await app.sendGroupMessage(group, MessageChain.create([Plain(arkexpand(msg))]))
+        if msg.startswith('搜索公招'):
+            if len(message.__root__) < 3 or message.__root__[2].type != "Image":
                 return
+            url = message.__root__[2].url
+            ans, d = arkRecruit(url)
+            fwd_nodeList = []
+            mmm = f"识别到{len(ans)}个tag：\n"
+            for i in ans:
+                mmm += f'{i} '
+            mmm = mmm[:-1]
+            fwd_nodeList = [
+                ForwardNode(
+                    target=member,
+                    time=datetime.datetime.now(),
+                    message=MessageChain.create(mmm),
+                )
+            ]
+            m = 1
+            for i in d:
+                sstr = ''
+                for j in i[0]:
+                    sstr += j + '，'
+                sstr = sstr[:-1] + '：'
+                sstr += '\n'
+                n = 6
+                for j in i[1]:
+                    sstr += j['n'] + '，'
+                    n = min(n, j['r'])
+                sstr = sstr[:-1]
+                m = max(m, n)
+                fwd_nodeList.append(
+                    ForwardNode(
+                        target=member,
+                        time=datetime.datetime.now(),
+                        message=MessageChain.create(sstr),
+                    )
+                )
+            fwd_nodeList[0].messageChain.extend(f"\n保底{m}星干员")
+            message = MessageChain.create(Forward(nodeList=fwd_nodeList))
+            await app.sendGroupMessage(group, message)
 
-    # pcr运势模块
-    if message.asDisplay().startswith("运势"):
-        t = datetime.datetime.now() - datetime.timedelta(hours=4)
-        if not 'p' in bed:
-            bed['p'] = {}
-        if not member.id in bed['p']:
-            bed['p'][member.id] = [t, '', {}]
-        await portune(app, group, member.id, bed['p'][member.id])
+        # if msg.startswith('ttest '):
+        #     url = message.__root__[2].url
+        #     await app.sendGroupMessage(group, MessageChain.create([Plain(url)]))
+            # arkRecruit(url)
 
-    # 瞎搞模块
-    if msg.startswith("expand"):
-        text = msg.split(' ')
-        if len(text) >= 2:
-            txt = text[1]
-            for i in text[2:]:
-                txt += ' ' + i
-        url = "https://lab.magiconch.com/api/nbnhhsh/guess"
-        r = requests.post(url, data={"text": txt})
-        s = eval(r.text)
-        if s:
-            if 'trans' not in s[0]:
-                ss = "你在说些什么"
+        # 瞎搞模块
+        if msg.startswith("expand"):
+            text = msg.split(' ')
+            if len(text) >= 2:
+                txt = text[1]
+                for i in text[2:]:
+                    txt += ' ' + i
+            url = "https://lab.magiconch.com/api/nbnhhsh/guess"
+            r = requests.post(url, data={"text": txt})
+            s = eval(r.text)
+            if s:
+                if 'trans' not in s[0]:
+                    ss = "你在说些什么"
+                else:
+                    ss = "%s 可能是：" % s[0]['name']
+                    s[0]['trans'].sort()
+                    for i in s[0]['trans']:
+                        ss += '\n' + i
             else:
-                ss = "%s 可能是：" % s[0]['name']
-                s[0]['trans'].sort()
-                for i in s[0]['trans']:
-                    ss += '\n' + i
-        else:
-            ss = "我听不懂"
-        await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
-    if message.asDisplay() == "咕一下":
-        await app.sendGroupMessage(group, MessageChain.create([Plain(dove())]))
-    if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('禁止/生日快乐')]))
-    if message.has(At):
-        flag = 0
-        for at in message.get(At):
-            if at.target == 1424912867:
-                at.target = member.id
-                flag = 1
-        if flag == 0:
-            return
-        if message.asDisplay().find("/生日快乐") != -1:
-            try:
-                await set_mute(app, group, [member.id], 600)
-            except:
-                pass
-        await app.sendGroupMessage(group, message.asSendable())
+                ss = "我听不懂"
+            await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+        if message.asDisplay() == "咕一下":
+            await app.sendGroupMessage(group, MessageChain.create([Plain(dove())]))
+        if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:
+            await app.sendGroupMessage(group, MessageChain.create([Plain('禁止/生日快乐')]))
+        if message.has(At):
+            flag = 0
+            for at in message.get(At):
+                if at.target == 1424912867:
+                    at.target = member.id
+                    flag = 1
+            if flag == 0:
+                return
+            if message.asDisplay().find("/生日快乐") != -1:
+                try:
+                    await set_mute(app, group, [member.id], 600)
+                except:
+                    pass
+            await app.sendGroupMessage(group, message.asSendable())
 
-    pattern = re.compile(r'异.*世.*相.*遇.*尽.*享.*美.*味.*')
-    if pattern.search(message.asDisplay()) != None:
-        await app.sendGroupMessage(group, MessageChain.create([Plain("来一份二刺猿桶")]))
+        pattern = re.compile(r'异.*世.*相.*遇.*尽.*享.*美.*味.*')
+        if pattern.search(message.asDisplay()) != None:
+            await app.sendGroupMessage(group, MessageChain.create([Plain("来一份二刺猿桶")]))
+
+    except KeyboardInterrupt:
+        print("quit")
+    except Exception as e:
+        traceback.print_exc()
+        await app.sendGroupMessage(group, MessageChain.create([Plain(traceback.format_exc())]))
 
 
-@bcc.receiver(MemberMuteEvent)
-async def member_mute_handler(app: GraiaMiraiApplication, event: MemberMuteEvent):
+@app.broadcast.receiver(MemberMuteEvent)
+async def member_mute_handler(app: Ariadne, event: MemberMuteEvent):
     if (int(read_from_ini('data/switch.ini', str(event.member.group.id), 'on', '0')) == 0):
         return
 
@@ -707,8 +782,8 @@ async def member_mute_handler(app: GraiaMiraiApplication, event: MemberMuteEvent
     # print(MemberMuteEvent.durationSeconds)
 
 
-@bcc.receiver(MemberUnmuteEvent)
-async def member_mute_handler(app: GraiaMiraiApplication, event: MemberUnmuteEvent):
+@app.broadcast.receiver(MemberUnmuteEvent)
+async def member_mute_handler(app: Ariadne, event: MemberUnmuteEvent):
     if (int(read_from_ini('data/switch.ini', str(event.member.group.id), 'on', '0')) == 0):
         return
 
@@ -720,8 +795,8 @@ async def member_mute_handler(app: GraiaMiraiApplication, event: MemberUnmuteEve
     # app.getMember()
 
 
-@bcc.receiver(BotMuteEvent)
-async def bot_mute_handler(app: GraiaMiraiApplication, event: BotMuteEvent):
+@app.broadcast.receiver(BotMuteEvent)
+async def bot_mute_handler(app: Ariadne, event: BotMuteEvent):
     if event.operator.id == hostqq:
         return
     if event.durationSeconds <= 3600:
@@ -736,8 +811,8 @@ async def bot_mute_handler(app: GraiaMiraiApplication, event: BotMuteEvent):
     await app.quit(event.operator.group)
 
 
-@bcc.receiver(BotLeaveEventKick)
-async def bot_kicked_hanler(app: GraiaMiraiApplication, event: BotLeaveEventKick):
+@app.broadcast.receiver(BotLeaveEventKick)
+async def bot_kicked_hanler(app: Ariadne, event: BotLeaveEventKick):
     # TODO 黑名单系统
     await app.sendGroupMessage(mygroup, MessageChain.create([Plain(
         '在%s(%d)被%s(%d)移出群聊，已将群和操作人列入黑名单' %
@@ -746,8 +821,8 @@ async def bot_kicked_hanler(app: GraiaMiraiApplication, event: BotLeaveEventKick
     )]))
 
 
-@bcc.receiver(ApplicationLaunched)
-async def repeattt(app: GraiaMiraiApplication):
+@app.broadcast.receiver(ApplicationLaunched)
+async def repeattt(app: Ariadne):
     # TODO 实装整点报时之类的功能
     asyncio.create_task(clock(app))
 

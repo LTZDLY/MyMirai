@@ -4,8 +4,8 @@ import random
 import re
 
 import requests
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 from requests_toolbelt import MultipartEncoder
 
 session = requests.Session()

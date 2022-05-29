@@ -1,18 +1,14 @@
-# 此为使用另一库实现的直播监听功能代码。
-# 因原库在服务器上运行时会有不明原因导致失败，故寻找另一库重新实现该功能，效果良好
-
-
 import asyncio
 import datetime
 import json
 import zlib
 
+import aiohttp
 import requests
-from aiowebsocket.converses import AioWebSocket
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Image, Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image, Plain
 
-remote = 'wss://broadcastlv.chat.bilibili.com:2245/sub'
+remote = 'wss://tx-bj-live-comet-01.chat.bilibili.com/sub'
 
 hb = '00000010001000010000000200000001'
 
@@ -64,20 +60,18 @@ async def entrence(app, room_id):
 
 async def startup(app, room_id: str):
     '''创建ws连接b站弹幕服务器'''
-    async with AioWebSocket(remote) as aws:
-        converse = aws.manipulator
-        await converse.send(get_data(room_id))
-        tasks = asyncio.create_task(sendHeartBeat(converse, room_id))
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[:len(t) - 3] + ']'
-        print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
+    async with aiohttp.ClientSession() as session:
         try:
-            while True:
-                recv_text = await converse.receive()
-                await printDM(app, recv_text, room_id)
+            async with session.ws_connect(remote) as ws:
+                await ws.send_bytes(get_data(room_id))
+                asyncio.create_task(sendHeartBeat(ws, room_id))
+                t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
+                t = t[:len(t) - 3] + ']'
+                print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
+                async for msg in ws:
+                    await printDM(app, msg.data, room_id)
         except Exception as e:
-            tasks.cancel()
-            if str(e) == '断开连接':
+            if(str(e) == '断开连接'):
                 await asyncio.sleep(300)
             await asyncio.sleep(30)
 
@@ -86,22 +80,22 @@ async def sendHeartBeat(websocket, room_id):
     '''每30秒发送心跳包'''
     while True:
         await asyncio.sleep(30)
-        await websocket.send(bytes.fromhex(hb))
+        if websocket.closed:
+            break  # 若连接断开，则退出函数
+        await websocket.send_bytes(bytes.fromhex(hb))
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
-        # print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
-
-
-async def receDM(app, websocket, room_id):
-    while True:
-        recv_text = await websocket.receive()
-        await printDM(app, recv_text, room_id)
+        print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
 
 # 将数据包传入：
 
 
 async def printDM(app, data, room_id):
     '''解析并输出数据包的数据'''
+    # 如果传入的data为null则直接返回
+    if not data:
+        return
+    
     # 获取数据包的长度，版本和操作类型
     packetLen = int(data[:4].hex(), 16)
     ver = int(data[6:8].hex(), 16)
@@ -160,9 +154,6 @@ async def printDM(app, data, room_id):
 
         if(jd['cmd'] != 'LIVE'):
             return
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[:len(t) - 3] + ']'
-        print('%s[NOTICE]: %s: LIVE START!' % (t, room_id))
         Localpath = './data/live.json'
         data = {}
         fr = open(Localpath, encoding='utf-8')
@@ -188,19 +179,15 @@ def get_info(room_id: str):
     '''获取b站用户个人信息'''
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
     headers = {'user-Agent': user_agent}
-    url = 'https://live.bilibili.com/%s' % room_id
-    r = requests.get(url, headers=headers)
-    t = r.content.decode('utf-8')
-    l = t.split('''<script>window.__NEPTUNE_IS_MY_WAIFU__=''')
-    ll = l[1].split('''</script>''')
-    text = ll[0]
-    data_raw = json.loads(text)
 
-    uid = data_raw['roomInfoRes']['data']['room_info']['uid']
-    room_id = data_raw['roomInfoRes']['data']['room_info']['room_id']
-    title = data_raw['roomInfoRes']['data']['room_info']['title']
-    keyframe = data_raw['roomInfoRes']['data']['room_info']['keyframe']
-    uname = data_raw['roomInfoRes']['data']['anchor_info']['base_info']['uname']
+    url = 'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=%s' % room_id
+    data_raw = requests.get(url, headers=headers).json()
+
+    uid = data_raw['data']['room_info']['uid']
+    room_id = data_raw['data']['room_info']['room_id']
+    title = data_raw['data']['room_info']['title']
+    keyframe = data_raw['data']['room_info']['keyframe']
+    uname = data_raw['data']['anchor_info']['base_info']['uname']
 
     data = {'title': title,
             'user': uname,

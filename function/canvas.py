@@ -4,8 +4,8 @@ from urllib import parse
 
 import requests
 from bs4 import BeautifulSoup
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 from requests.sessions import Session
 
 from .crack import crack_main

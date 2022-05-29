@@ -1,7 +1,7 @@
 
-from graia.application.group import Group, Member
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.entry import Group, Member
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 
 from function.ini import write_in_ini
 from function.permission import permissionCheck

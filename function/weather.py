@@ -1,10 +1,10 @@
 import random
 
 import requests
-from graia.application.event.messages import GroupMessage
-from graia.application.group import Group, Member
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.entry import Group, Member
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 from graia.broadcast.interrupt.waiter import Waiter
 
 s = requests.session()

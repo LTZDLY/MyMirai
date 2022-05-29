@@ -4,9 +4,9 @@ import json
 import os
 import random
 
-from graia.application.group import Group
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.entry import Group
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 
 from function.ini import read_from_ini, write_in_ini
 

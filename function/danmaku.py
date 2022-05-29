@@ -1,14 +1,18 @@
+# 此为使用另一库实现的直播监听功能代码。
+# 因原库在服务器上运行时会有不明原因导致失败，故寻找另一库重新实现该功能，效果良好
+
+
 import asyncio
 import datetime
 import json
 import zlib
 
-import aiohttp
 import requests
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Image, Plain
+from aiowebsocket.converses import AioWebSocket
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image, Plain
 
-remote = 'wss://tx-bj-live-comet-01.chat.bilibili.com/sub'
+remote = 'wss://broadcastlv.chat.bilibili.com:2245/sub'
 
 hb = '00000010001000010000000200000001'
 
@@ -60,18 +64,20 @@ async def entrence(app, room_id):
 
 async def startup(app, room_id: str):
     '''创建ws连接b站弹幕服务器'''
-    async with aiohttp.ClientSession() as session:
+    async with AioWebSocket(remote) as aws:
+        converse = aws.manipulator
+        await converse.send(get_data(room_id))
+        tasks = asyncio.create_task(sendHeartBeat(converse, room_id))
+        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
+        t = t[:len(t) - 3] + ']'
+        print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
         try:
-            async with session.ws_connect(remote) as ws:
-                await ws.send_bytes(get_data(room_id))
-                asyncio.create_task(sendHeartBeat(ws, room_id))
-                t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-                t = t[:len(t) - 3] + ']'
-                print('%s[NOTICE]: 开启对房间号%s的视奸' % (t, room_id))
-                async for msg in ws:
-                    await printDM(app, msg.data, room_id)
+            while True:
+                recv_text = await converse.receive()
+                await printDM(app, recv_text, room_id)
         except Exception as e:
-            if(str(e) == '断开连接'):
+            tasks.cancel()
+            if str(e) == '断开连接':
                 await asyncio.sleep(300)
             await asyncio.sleep(30)
 
@@ -80,12 +86,16 @@ async def sendHeartBeat(websocket, room_id):
     '''每30秒发送心跳包'''
     while True:
         await asyncio.sleep(30)
-        if websocket.closed:
-            break  # 若连接断开，则退出函数
-        await websocket.send_bytes(bytes.fromhex(hb))
+        await websocket.send(bytes.fromhex(hb))
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
-        print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
+        # print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
+
+
+async def receDM(app, websocket, room_id):
+    while True:
+        recv_text = await websocket.receive()
+        await printDM(app, recv_text, room_id)
 
 # 将数据包传入：
 
@@ -95,7 +105,7 @@ async def printDM(app, data, room_id):
     # 如果传入的data为null则直接返回
     if not data:
         return
-    
+
     # 获取数据包的长度，版本和操作类型
     packetLen = int(data[:4].hex(), 16)
     ver = int(data[6:8].hex(), 16)
@@ -118,8 +128,7 @@ async def printDM(app, data, room_id):
         if(op == 3):
             t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
             t = t[:len(t) - 3] + ']'
-            print('%s[POPULARITY]: %s: %d' %
-                  (t, room_id, int(data[16:].hex(), 16)))
+            # print('%s[POPULARITY]: %s: %d' % (t, room_id, int(data[16:].hex(), 16)))
         return
 
     # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
@@ -154,6 +163,9 @@ async def printDM(app, data, room_id):
 
         if(jd['cmd'] != 'LIVE'):
             return
+        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
+        t = t[:len(t) - 3] + ']'
+        print('%s[NOTICE]: %s: LIVE START!' % (t, room_id))
         Localpath = './data/live.json'
         data = {}
         fr = open(Localpath, encoding='utf-8')
@@ -179,8 +191,9 @@ def get_info(room_id: str):
     '''获取b站用户个人信息'''
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
     headers = {'user-Agent': user_agent}
-
+    
     url = 'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=%s' % room_id
+    
     data_raw = requests.get(url, headers=headers).json()
 
     uid = data_raw['data']['room_info']['uid']

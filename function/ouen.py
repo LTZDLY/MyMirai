@@ -1,11 +1,11 @@
 from PIL import Image, ImageDraw, ImageFont
 
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Image as Img
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image as Img
 
 
 async def ouen(app, txt: str, group):
-    add = "msyh.ttc"
+    add = "simhei.ttf"
     img = Image.open('./source/4.png')
     # 控制表情的叠加位置
     draw = ImageDraw.Draw(img)
@@ -18,11 +18,11 @@ async def ouen(app, txt: str, group):
     size_max = int(320/len(txt)*2) + 1
     size_min = int(320/len(txt)) - 1
 
-    print(len(txt))
+    # print(len(txt))
     if len(txt) == 1:
         font = ImageFont.truetype(add, 180)
         text_size = draw.textsize(txt, font=font)
-        print(text_size)
+        # print(text_size)
         if abs(text_size[0] - 180) < 30:
             x, y = 180, 30
         else:
@@ -30,7 +30,7 @@ async def ouen(app, txt: str, group):
     elif len(txt) == 2:
         font = ImageFont.truetype(add, 140)
         text_size = draw.textsize(txt, font=font)
-        print(text_size)
+        # print(text_size)
         if abs(text_size[0] - 280) < 20:
             x, y = 130, 50
         elif abs(text_size[0] - 210) < 20:
@@ -43,7 +43,7 @@ async def ouen(app, txt: str, group):
 
             font = ImageFont.truetype(add, size)
             text_size = draw.textsize(txt, font=font)
-            print(text_size)
+            # print(text_size)
             if text_size[0] > 320:
                 continue
             else:
@@ -52,7 +52,7 @@ async def ouen(app, txt: str, group):
         s = text_size[1]
         y = -0.0009077705156136529 * \
             (pow(s, 2))-0.25326797385620914*s+105.27777777777777
-        print(y)
+        # print(y)
 
     s_draw.text((x, y), txt, fill=(0, 0, 0), font=font)
     s_rotate = s_background.rotate(-5, expand=1)  # 图像会转动随机的角度
@@ -60,9 +60,9 @@ async def ouen(app, txt: str, group):
 
     out1 = Image.composite(s_rotate, mask, s_rotate)  # 第一次复合生成的图片是旋转后去黑色背景图片
     mask = out1
-    out1.show()
+    # out1.show()
     out1.save("./source/bak.png")
 
     await app.sendGroupMessage(group, MessageChain.create([
-        Img.fromLocalFile("./source/bak.png")
+        Img(path="./source/bak.png")
     ]))

@@ -1,8 +1,8 @@
 import datetime
 
 import xlrd
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 
 def takeclass(elem):
     return elem['class']

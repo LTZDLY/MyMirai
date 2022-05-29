@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 import requests
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 
 from function.data import pcr_cookie as cookie, pcr_token as token
 

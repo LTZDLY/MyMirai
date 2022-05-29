@@ -2,7 +2,7 @@
 *.ini
 *.pyc
 *.json
-function/test*
+test/
 source/
 wxfile/
 data.py

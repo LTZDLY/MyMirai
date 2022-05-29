@@ -1,5 +1,5 @@
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Plain
 
 from function.mute import set_mute
 
@@ -11,7 +11,7 @@ def takeSecond(elem):
 
 
 async def priv_get(app):
-    l = list(await app.groupList())
+    l = list(await app.getGroupList())
     l.sort(key=takeSecond)
     s = '获取群列表：'
     m = len(l)
@@ -34,7 +34,7 @@ async def priv_get(app):
 
 
 async def priv_se(app, message: MessageChain):
-    l = await app.groupList()
+    l = await app.getGroupList()
     l.sort(key=takeSecond)
     ss = message.asDisplay().split(' ')
     if (len(ss) != 3):
@@ -52,7 +52,7 @@ async def priv_se(app, message: MessageChain):
 
 
 async def priv_mute(app, message: MessageChain):
-    l = await app.groupList()
+    l = await app.getGroupList()
     l.sort(key=takeSecond)
     ss = message.asDisplay().split(' ')
     if (len(ss) != 4):

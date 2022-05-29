@@ -2,7 +2,7 @@ import json
 import os
 from typing import Dict
 
-from graia.application.group import Group, Member
+from graia.ariadne.entry import Group, Member
 
 
 def inban(member: int, group: int) -> bool:

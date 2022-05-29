@@ -1,8 +1,8 @@
 from urllib import parse
 
 import requests
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Image, Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image, Plain
 
 
 def dove() -> str:
@@ -16,6 +16,6 @@ async def latex(app, group, s: str):
     text = parse.quote(text)
     text = text.replace('%2B', '&plus;')
     try:
-        await app.sendGroupMessage(group, MessageChain.create([Image.fromNetworkAddress(url + text)]))
+        await app.sendGroupMessage(group, MessageChain.create([Image(url=url + text)]))
     except:
         await app.sendGroupMessage(group, MessageChain.create([Plain('输入了无效的公式，请重试')]))

@@ -1,8 +1,8 @@
 import asyncio
 import datetime
 
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import At, Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import At, Plain
 
 from function.bilibili import sign
 from function.excel import readexcel
@@ -95,18 +95,24 @@ async def remindme(app, group: int, member: int, message: MessageChain):
         second = text[0]
         text = text[1]
     try:
-        day = float(day)
-        hour = float(hour)
-        minute = float(minute)
-        second = float(second)
+        day = abs(float(day))
+        hour = abs(float(hour))
+        minute = abs(float(minute))
+        second = abs(float(second))
         d = datetime.timedelta(days=day, hours=hour,
                                minutes=minute, seconds=second)
     except:
         return
+    rep = f'{day}天' if day != 0 else ''
+    rep += f'{hour}小时' if hour != 0 else ''
+    rep += f'{minute}分' if minute != 0 else ''
+    rep += f'{second}秒' if second != 0 else ''
+    if rep == '':
+        return
     asyncio.create_task(
-        reminder(app, group, message_a.plusWith(message).asSendable(), d))
+        reminder(app, group, message_a.extend(message).asSendable(), d))
     message_b = MessageChain.create([Plain('切噜~♪将在' + rep + '后提醒你：\n')])
-    await app.sendGroupMessage(group, message_b.plusWith(message).asSendable())
+    await app.sendGroupMessage(group, message_b.extend(message).asSendable())
 
 
 async def clock(app):

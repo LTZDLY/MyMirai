@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 import random
 
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import Image, Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image, Plain
 
 
 async def seImage(app, group, msg: str):
@@ -45,7 +45,10 @@ async def seImage(app, group, msg: str):
     for i, j, k in os.walk(filePath):
         file = filePath + k[random.randint(0, len(k) - 1)]
     print(file)
-    message = MessageChain.create([
-        Image.fromLocalFile(Path(file))
-    ])
-    await app.sendGroupMessage(group, message)
+    try:
+        message = MessageChain.create([
+            Image(path=file)
+        ])
+        await app.sendGroupMessage(group, message)
+    except:
+        return

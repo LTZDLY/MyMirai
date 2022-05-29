@@ -1,8 +1,8 @@
 import asyncio
 
-from graia.application.group import Group, Member, MemberPerm
-from graia.application.message.chain import MessageChain
-from graia.application.message.elements.internal import At, Plain
+from graia.ariadne.entry import Group, Member, MemberPerm
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import At, Plain
 
 
 def time_to_str(second: int) -> str:
@@ -81,11 +81,11 @@ async def set_mute(app, group: Group, mutelist: list, mutetime):
             if (time == 0):
                 text = sender.name + '(' + str(sender.id) + ')' + \
                     "被我解除禁言"
-                await app.unmute(group, sender)
+                await app.unmuteMember(group, sender)
             else:
                 text = sender.name + '(' + str(sender.id) + ')' + \
                     "被我禁言" + time_to_str(int(time))
-                await app.mute(group, sender, int(time))
+                await app.muteMember(group, sender, int(time))
             await app.sendGroupMessage(group, MessageChain.create([Plain(text)]))
 
 
