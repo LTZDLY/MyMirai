@@ -180,7 +180,7 @@ async def printDM(app, data, room_id):
                     info['user'], info['title'])
                 await app.sendGroupMessage(j, MessageChain.create([
                     Plain(sstr),
-                    Image.fromNetworkAddress(info['keyframe']),
+                    Image(url=info['keyframe']),
                     Plain('\n直播间地址：https://live.bilibili.com/%d' %
                           info['room_id'])
                 ]))

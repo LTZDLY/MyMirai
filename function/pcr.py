@@ -1,7 +1,7 @@
 import json
 import random
 import time
-from datetime import datetime, timedelta
+import datetime
 from typing import Dict
 
 import requests
@@ -44,8 +44,8 @@ async def dayReportCollect(app, group):
 
 
 async def dayReportTotal(app, group, flag=False):
-    tt = datetime.now()
-    td = timedelta(hours=5)
+    tt = datetime.datetime.now()
+    td = datetime.timedelta(hours=5)
     t = (tt - td).strftime("%Y-%m-%d")
     url = 'https://www.bigfun.cn/api/feweb?target=gzlj-clan-day-report%2Fa&size=30&date=' + t
     headers = {"cookie": cookie, "x_csrf_token": token}
@@ -83,8 +83,8 @@ async def dayPersonFind(app, group, msg: str, flag=False):
     title = text[1]
     for i in range(2, len(text)):
         title = title + ' ' + text[i]
-    tt = datetime.now()
-    td = timedelta(hours=5)
+    tt = datetime.datetime.now()
+    td = datetime.timedelta(hours=5)
     t = (tt - td).strftime("%Y-%m-%d")
     url = 'https://www.bigfun.cn/api/feweb?target=gzlj-clan-day-report%2Fa&size=30&date=' + t
     headers = {"cookie": cookie, "x_csrf_token": token}

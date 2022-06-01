@@ -5,6 +5,7 @@ import os
 import random
 import re
 import traceback
+from typing import Union
 
 import requests
 from graia.ariadne.app import Ariadne
@@ -15,34 +16,41 @@ from graia.ariadne.event.message import (FriendMessage, GroupMessage,
 from graia.ariadne.event.mirai import (BotLeaveEventKick, BotMuteEvent,
                                        MemberMuteEvent, MemberUnmuteEvent)
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import (At, Forward, ForwardNode, Plain,
-                                           Quote, Voice)
+from graia.ariadne.message.element import (At, Forward, ForwardNode, Image,
+                                           Plain, Quote, Voice)
+from graia.ariadne.message.parser.base import (ContainKeyword, DetectPrefix,
+                                               MatchContent, Mention,
+                                               MentionMe)
 from graia.broadcast import Broadcast
+from graia.broadcast.builtin.decorators import Depend
+from graia.broadcast.exceptions import ExecutionStop
 from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
+from graia.saya import Channel, Saya
+from graia.saya.builtins.broadcast import BroadcastBehaviour
+from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graiax import silkcoder
 
-from function.arknights import (arkexpand, arkoffDefine, arkRecruit,
-                                arksetDefine, search_items, search_stages)
-from function.bilibili import bilibili
-from function.canvas import add_person, canvas, courses, ids_login
-from function.cherugo import cheru2str, str2cheru
-from function.danmaku import entrence, get_info, livewrite
-from function.excel import readexcel
-from function.image import seImage
-from function.ini import read_from_ini, write_in_ini
-from function.latex import dove, latex
-from function.leetcode import get_daily, get_rand, luogu_rand
-from function.mute import mute_member, set_mute, time_to_str
-from function.ouen import ouen
-from function.pcr import pcr, pcrteam
-from function.permission import inban, permissionCheck, setMain
-from function.portune import portune
-from function.private import priv_handler
-from function.repeat import clock, remindme, repeat
-from function.signup import (atme, choice, define, loadDefine, paraphrase,
-                             signup)
-from function.switch import switch
-from function.weather import weather
+from function.arknights import *
+from function.bilibili import *
+from function.canvas import *
+from function.cherugo import *
+from function.danmaku import *
+from function.excel import *
+from function.image import *
+from function.ini import *
+from function.latex import *
+from function.leetcode import *
+from function.mute import *
+from function.ouen import *
+from function.pcr import *
+from function.permission import *
+from function.portune import *
+from function.private import *
+from function.repeat import *
+from function.signup import *
+from function.switch import *
+from function.weather import *
 
 live = {}
 sess = {}
@@ -51,27 +59,70 @@ rep = {}
 
 app = Ariadne(MiraiSession(host="http://localhost:8098",
                            verify_key="LLSShinoai", account=1424912867))
-inc = InterruptControl(app.broadcast)
+bcc = app.broadcast
+inc = InterruptControl(bcc)
+
+
+# saya = app.create(Saya)
+# saya.install_behaviours(
+#     app.create(BroadcastBehaviour),
+# )
+# with saya.module_context():
+#     for module_info in pkgutil.iter_modules(["modules"]):
+#         saya.require(f"modules.{module_info.name}")
 
 mygroup = 958056260
 hostqq = 349468958
 
 
-@app.broadcast.receiver("FriendMessage")
+def check_group():
+    async def check_group_deco(app: Ariadne, group: Group):
+        if int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0:
+            raise ExecutionStop
+    return Depend(check_group_deco)
+
+
+def nothost(*members: int):
+    async def check_host(app: Ariadne, member: Union[Member, Friend]):
+        if member.id in members:
+            raise ExecutionStop
+    return Depend(check_host)
+
+
+def fromhost(*friends: int):
+    async def check_ishost(app: Ariadne, friend: Union[Member, Friend]):
+        if friend.id not in friends:
+            raise ExecutionStop
+    return Depend(check_ishost)
+
+
+def check_permission(permission: int):
+    async def check_permission_deco(app: Ariadne, group: Group, member: Member):
+        if permission > permissionCheck(member.id, group.id):
+            raise ExecutionStop
+    return Depend(check_permission_deco)
+
+
+@bcc.receiver(
+    FriendMessage,
+    decorators=[nothost(hostqq)],
+)
+async def forward_listener(app: Ariadne, message: MessageChain, friend: Friend):
+    message_a = MessageChain.create([
+        Plain('%s(%d)向您发送消息：\n' % (friend.nickname, friend.id))])
+    message_a.extend(message.asSendable())
+    await app.sendFriendMessage(hostqq, message_a)
+
+
+@bcc.receiver(
+    FriendMessage,
+    decorators=[MatchContent("切噜")],
+)
 async def friend_message_handler(app: Ariadne, message: MessageChain, friend: Friend):
-    if message.asDisplay() == "切噜":
-        await app.sendFriendMessage(friend, MessageChain.create([Plain('切噜~♪')]))
-    if (friend.id != hostqq):
-        message_a = MessageChain.create([
-            Plain('%s(%d)向您发送消息：\n' % (friend.nickname, friend.id))])
-        message_a.extend(message.asSendable())
-        await app.sendFriendMessage(hostqq, message_a)
-        return
-    # TODO 移植cq中最高权限的私聊指令
-    await priv_handler(app, message)
+    await app.sendFriendMessage(friend, MessageChain.create([Plain('切噜~♪')]))
 
 
-@app.broadcast.receiver("TempMessage")
+@bcc.receiver(TempMessage)
 async def temp_message_handler(app: Ariadne, message: MessageChain, sender: Member):
     message_a = MessageChain.create([
         Plain('%s(%d)向您发送消息：\n' % (sender.name, sender.id))])
@@ -81,35 +132,88 @@ async def temp_message_handler(app: Ariadne, message: MessageChain, sender: Memb
 ti = 0
 
 
-@app.broadcast.receiver("GroupMessage")
-async def group_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
-    # 监听事件永远最优先
-    if (member.id != hostqq):
-        if(atme(message.asPersistentString())):
-            message_a = MessageChain.create([
-                Plain("消息监听：\n%s(%d)在%s(%d)中可能提到了我：\n" % (member.name, member.id, group.name, group.id))])
-            message_b = message.asSendable()
-            message_a.extend(message_b)
-            for i in range(0, len(message_a.__root__)):
-                if message_a.__root__[i].type == 'At':
-                    message_a.__root__[i] = Plain(
-                        '@' + str(message_a.__root__[i].target))
-            await app.sendGroupMessage(mygroup, message_a)
+@bcc.receiver(
+    FriendMessage,
+    decorators=[fromhost(hostqq)],
+)
+async def callme_listener(app: Ariadne, message: MessageChain, friend: Friend):
+    # # TODO 移植cq中最高权限的私聊指令
+    await priv_handler(app, message)
 
+
+@bcc.receiver(
+    GroupMessage,
+    decorators=[nothost(hostqq), Mention(hostqq)],
+)
+async def callme_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    # 监听事件永远最优先
+    message_a = MessageChain.create([
+        Plain("消息监听：\n%s(%d)在%s(%d)中可能提到了我：\n" % (member.name, member.id, group.name, group.id))])
+    message_b = message.asSendable()
+    message_a.extend(message_b)
+    for i in range(0, len(message_a.__root__)):
+        if message_a.__root__[i].type == 'At':
+            message_a.__root__[i] = Plain(
+                '@' + str(message_a.__root__[i].target))
+    await app.sendGroupMessage(mygroup, message_a)
+
+
+@bcc.receiver(GroupMessage, decorators=[check_permission(3), DetectPrefix('switch ')])
+async def switch_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    # 开关指令不允许转义
+    await switch(app, group, member, message.asDisplay())
+
+
+@bcc.receiver(
+    GroupMessage,
+    decorators=[MatchContent("切噜")],
+)
+async def cheru(app: Ariadne, group: Group, member: Member):
+    await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
+
+    # 此处发语音功能限定文件格式为silk，并且对框架具有一定版本要求，并且音质贼差
+    filePath = './source/audio/cheru/'
+    for i, j, k in os.walk(filePath):
+        file = filePath + k[random.randint(0, len(k) - 1)]
+    audio_bytes = await silkcoder.async_encode(file, ios_adaptive=True)
+    await app.sendGroupMessage(group, MessageChain.create([Voice(data_bytes=audio_bytes)]))
+
+
+@bcc.receiver(
+    GroupMessage,
+    decorators=[ContainKeyword("recall"), check_permission(1)],
+)
+async def recall_listener(app: Ariadne, message: MessageChain):
+    # bot撤回指令，不支持转义
+    if message.has(Quote):
+        for at in message.get(Quote):
+            try:
+                await app.recallMessage(at.id)
+                await app.recallMessage(message.__root__[0].id)
+            except:
+                pass
+
+
+# @bcc.receiver(
+#     GroupMessage,
+#     decorators=[MentionMe]
+# )
+# async def fun():
+
+#     pass
+
+
+@bcc.receiver(
+    GroupMessage,
+    decorators=[check_group()],
+)
+async def group_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     # 若用户在黑名单当中则忽略消息
     if inban(member.id, group.id):
         return
 
     # 权限检查
     permissionflag = permissionCheck(member.id, group.id)
-
-    # 开关指令不允许转义
-    if message.asDisplay().startswith("switch "):
-        await switch(app, group, member, message.asDisplay())
-
-    # bot启用检查
-    if (int(read_from_ini('data/switch.ini', str(group.id), 'on', '0')) == 0):
-        return
 
     try:
         # 复读
@@ -142,19 +246,6 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 rep[group.id] = [message_a, 1]
             if rep[group.id][1] == 3:
                 await app.sendGroupMessage(group, MessageChain.create(message_a))
-
-        # bot撤回指令，不支持转义
-        if message.has(Quote):
-            for at in message.get(Quote):
-                for msg in message.get(Plain):
-                    msg.text = msg.text.replace(' ', '')
-                    if msg.text == '':
-                        continue
-                    if msg.text == 'recall':
-                        if permissionflag > 0:
-                            await app.recallMessage(at.id)
-                            await app.recallMessage(message.__root__[0].id)
-                            return
 
         # bot 退群指令
         if member.id == hostqq and message.asDisplay() == "\\withdraw":
@@ -488,15 +579,6 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             if(permissionCheck(member.id, group.id) == 3):
                 define(message.asDisplay())
 
-        if msg == "切噜":
-            await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
-
-            # 此处发语音功能限定文件格式为silk，并且对框架具有一定版本要求，并且音质贼差
-            filePath = './source/audio/cheru/'
-            for i, j, k in os.walk(filePath):
-                file = filePath + k[random.randint(0, len(k) - 1)]
-            await app.sendGroupMessage(group, MessageChain.create([Voice(path=file)]))
-
         # 切噜语模块
         if msg.startswith("切噜语加密 "):
             s = msg.replace("切噜语加密 ", '', 1)
@@ -529,16 +611,13 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
 
         # 选择模块
         if msg.startswith("choice "):
-            ss = msgs.split(']', 1)
-            s = ss[1]
+            s = msgs
             while s.find('  ') != -1:
                 s = s.replace('  ', ' ')
             s = s.replace("choice ", '', 1)
             msg = choice(s)
             await app.sendGroupMessage(group, MessageChain.fromPersistentString(msg))
         if msg.startswith("选择 "):
-            print(message.__root__)
-            print(msgs)
             s = msgs
             while s.find('  ') != -1:
                 s = s.replace('  ', ' ')
@@ -742,6 +821,8 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:
             await app.sendGroupMessage(group, MessageChain.create([Plain('禁止/生日快乐')]))
         if message.has(At):
+            if message.asDisplay().find('recall') != -1:
+                return
             flag = 0
             for at in message.get(At):
                 if at.target == 1424912867:
@@ -767,7 +848,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         await app.sendGroupMessage(group, MessageChain.create([Plain(traceback.format_exc())]))
 
 
-@app.broadcast.receiver(MemberMuteEvent)
+@bcc.receiver(MemberMuteEvent)
 async def member_mute_handler(app: Ariadne, event: MemberMuteEvent):
     if (int(read_from_ini('data/switch.ini', str(event.member.group.id), 'on', '0')) == 0):
         return
@@ -782,7 +863,7 @@ async def member_mute_handler(app: Ariadne, event: MemberMuteEvent):
     # print(MemberMuteEvent.durationSeconds)
 
 
-@app.broadcast.receiver(MemberUnmuteEvent)
+@bcc.receiver(MemberUnmuteEvent)
 async def member_mute_handler(app: Ariadne, event: MemberUnmuteEvent):
     if (int(read_from_ini('data/switch.ini', str(event.member.group.id), 'on', '0')) == 0):
         return
@@ -795,7 +876,7 @@ async def member_mute_handler(app: Ariadne, event: MemberUnmuteEvent):
     # app.getMember()
 
 
-@app.broadcast.receiver(BotMuteEvent)
+@bcc.receiver(BotMuteEvent)
 async def bot_mute_handler(app: Ariadne, event: BotMuteEvent):
     if event.operator.id == hostqq:
         return
@@ -811,7 +892,7 @@ async def bot_mute_handler(app: Ariadne, event: BotMuteEvent):
     await app.quit(event.operator.group)
 
 
-@app.broadcast.receiver(BotLeaveEventKick)
+@bcc.receiver(BotLeaveEventKick)
 async def bot_kicked_hanler(app: Ariadne, event: BotLeaveEventKick):
     # TODO 黑名单系统
     await app.sendGroupMessage(mygroup, MessageChain.create([Plain(
@@ -821,7 +902,7 @@ async def bot_kicked_hanler(app: Ariadne, event: BotLeaveEventKick):
     )]))
 
 
-@app.broadcast.receiver(ApplicationLaunched)
+@bcc.receiver(ApplicationLaunched)
 async def repeattt(app: Ariadne):
     # TODO 实装整点报时之类的功能
     asyncio.create_task(clock(app))

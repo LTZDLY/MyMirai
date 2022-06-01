@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+import datetime
 from urllib import parse
 
 import requests
@@ -109,7 +109,7 @@ def ids_session(s: Session, qq: int) -> Session:
 
 # canvas登录失效检测
 def canvas_session(s: Session, qq: int):
-    url = f"http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date={datetime.now().strftime('%Y-%m-%d')}"
+    url = f"http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date={datetime.datetime.now().strftime('%Y-%m-%d')}"
     r = s.get(url)
     if r.status_code == 401:
         print("检测到canvas登录状态丢失，现尝试重新登录canvas")
@@ -126,7 +126,7 @@ def courses_session(s: Session, qq: int):
         return courses_login(s, qq)
     
     token = courses_data[qq][1]
-    date = datetime.now().date()
+    date = datetime.datetime.now().date()
     data = {"user_token": token, "start": date, "end": date}
     url = "https://courses.tongji.edu.cn/tmbs/api/v1/user/calendar/my"
     r = s.post(url, data=data)
@@ -204,7 +204,7 @@ def add_person(qq_id, id, password):
 
 async def timetable(app, s, group, member, flag=True):
     url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
-        datetime.now().strftime('%Y-%m-%d')
+        datetime.datetime.now().strftime('%Y-%m-%d')
     r = s.get(url)
     data = json.loads(r.text.replace('while(1);', ''))
     sstr = ''
@@ -212,9 +212,9 @@ async def timetable(app, s, group, member, flag=True):
     for i in data:
         if not 'context_type' in i:
             continue
-        date = datetime.strptime(
-            i['plannable_date'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=8)
-        if (date - datetime.now()).days > 30:
+        date = datetime.datetime.strptime(
+            i['plannable_date'], '%Y-%m-%dT%H:%M:%SZ') + datetime.timedelta(hours=8)
+        if (date - datetime.datetime.now()).days > 30:
             continue
         if i['context_type'] == 'User':
             if flag and i['planner_override'] != None and i['planner_override']['marked_complete'] != False:
@@ -257,11 +257,11 @@ async def addddl(app, s, group, member, msg: str):
         await app.sendGroupMessage(group, MessageChain.create([Plain('请输入标题！')]))
     elif len(text) == 2:
         event_end = event_start = (
-            datetime.now() - timedelta(hours=8) + timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%SZ')
+            datetime.datetime.now() - datetime.timedelta(hours=8) + datetime.timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%SZ')
     event_title = text[1]
     if event_start == '':
         text[2] = text[2].replace('-', '.')
-        y = datetime.now().year
+        y = datetime.datetime.now().year
         m = 0
         d = 0
         subtext = text[2].split('.')
@@ -275,7 +275,7 @@ async def addddl(app, s, group, member, msg: str):
         else:
             return
         event_end = event_start = (
-            datetime(int(y), int(m), int(d)) - timedelta(hours=8)).strftime('%Y-%m-%dT%H:%M:%SZ')
+            datetime.datetime(int(y), int(m), int(d)) - datetime.timedelta(hours=8)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events'
 
@@ -301,7 +301,7 @@ async def delddl(app, s, group, member, msg: str):
     event_title = text[1]
 
     url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
-        datetime.now().strftime('%Y-%m-%d')
+        datetime.datetime.now().strftime('%Y-%m-%d')
     r = s.get(url)
     data = json.loads(r.text.replace('while(1);', ''))
 
@@ -335,7 +335,7 @@ async def markfinish(app, s: Session, group, member, msg: str):
     event_title = text[1]
 
     url = 'http://canvas.tongji.edu.cn/api/v1/planner/items?per_page=50&start_date=' + \
-        datetime.now().strftime('%Y-%m-%d')
+        datetime.datetime.now().strftime('%Y-%m-%d')
     r = s.get(url)
     data = json.loads(r.text.replace('while(1);', ''))
 
