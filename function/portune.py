@@ -102,7 +102,7 @@ def drawing_pic(var=None, model='') -> Image:
     draw = ImageDraw.Draw(img)
 
     if not text:
-        text, title = get_info(charaid)
+        text, title = luck_get_info(charaid)
     else:
         title = get_luck_type(text)
 
@@ -150,7 +150,7 @@ def random_Basemap() -> str:
     return os.path.join(Img_Path, random_img)
 
 
-def get_info(charaid):
+def luck_get_info(charaid):
     for i in luck_desc:
         if charaid in i['charaid']:
             typewords = i['type']

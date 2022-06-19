@@ -166,7 +166,7 @@ async def switch_listener(app: Ariadne, message: MessageChain, group: Group, mem
 
 @bcc.receiver(
     GroupMessage,
-    decorators=[MatchContent("切噜")],
+    decorators=[MatchContent("切噜"), check_group()],
 )
 async def cheru(app: Ariadne, group: Group, member: Member):
     await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~♪')]))
@@ -796,26 +796,6 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             # arkRecruit(url)
 
         # 瞎搞模块
-        if msg.startswith("expand"):
-            text = msg.split(' ')
-            if len(text) >= 2:
-                txt = text[1]
-                for i in text[2:]:
-                    txt += ' ' + i
-            url = "https://lab.magiconch.com/api/nbnhhsh/guess"
-            r = requests.post(url, data={"text": txt})
-            s = eval(r.text)
-            if s:
-                if 'trans' not in s[0]:
-                    ss = "你在说些什么"
-                else:
-                    ss = "%s 可能是：" % s[0]['name']
-                    s[0]['trans'].sort()
-                    for i in s[0]['trans']:
-                        ss += '\n' + i
-            else:
-                ss = "我听不懂"
-            await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
         if message.asDisplay() == "咕一下":
             await app.sendGroupMessage(group, MessageChain.create([Plain(dove())]))
         if msg.find("/生日快乐") != -1 and len(msg.replace("/生日快乐", "")) == 0:
@@ -846,6 +826,41 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
     except Exception as e:
         traceback.print_exc()
         await app.sendGroupMessage(group, MessageChain.create([Plain(traceback.format_exc())]))
+
+
+@bcc.receiver(
+    GroupMessage,
+    decorators=[check_group(), DetectPrefix("expand")]
+)
+async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
+    # 瞎搞模块
+    text = message.asDisplay().split(' ')
+    if len(text) >= 2:
+        txt = text[1]
+        for i in text[2:]:
+            txt += ' ' + i
+    if not txt.isascii():
+        await app.sendGroupMessage(group, MessageChain.create([Plain("你好好反思反思你在说什么")]))
+        return
+    url = "https://lab.magiconch.com/api/nbnhhsh/guess"
+    r = requests.post(url, data={"text": txt})
+    s = json.loads(r.text)[0]
+    if s:
+        if 'inputting' in s and s['inputting']:
+            ss = "%s 有可能是：" % s['name']
+            s['inputting'].sort()
+            for i in s['input']:
+                ss += '\n' + i
+        elif 'trans' in s and s['trans']:
+            ss = "%s 可能是：" % s['name']
+            s['trans'].sort()
+            for i in s['trans']:
+                ss += '\n' + i
+        else:
+            ss = "你在说些什么"
+    else:
+        ss = "我听不懂"
+    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
 
 
 @bcc.receiver(MemberMuteEvent)
