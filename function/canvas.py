@@ -240,7 +240,7 @@ async def timetable(app, s, group, member, flag=True):
     if ss == '':
         ss = '\n一月内的所有任务已经全部完成了呢！'
     sstr = '一月内课程ddl：' + sstr + '\n一月内自定ddl：' + ss
-    await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
+    await app.send_group_message(group, MessageChain([Plain(sstr)]))
     pass
 
 
@@ -254,7 +254,7 @@ async def addddl(app, s, group, member, msg: str):
     text = msg.split(' ')
 
     if len(text) == 1:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('请输入标题！')]))
+        await app.send_group_message(group, MessageChain([Plain('请输入标题！')]))
     elif len(text) == 2:
         event_end = event_start = (
             datetime.datetime.now() - datetime.timedelta(hours=8) + datetime.timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -286,15 +286,15 @@ async def addddl(app, s, group, member, msg: str):
     r = s.post(url, data=data)
 
     if not is_json(r.text) or 'errors' in r.json():
-        await app.sendGroupMessage(group, MessageChain.create([Plain('添加失败！')]))
+        await app.send_group_message(group, MessageChain([Plain('添加失败！')]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('添加成功！')]))
+        await app.send_group_message(group, MessageChain([Plain('添加成功！')]))
 
 
 async def delddl(app, s, group, member, msg: str):
     text = msg.split(' ')
     if len(text) == 1:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('请输入标题！')]))
+        await app.send_group_message(group, MessageChain([Plain('请输入标题！')]))
     elif len(text) != 2:
         return
 
@@ -312,23 +312,23 @@ async def delddl(app, s, group, member, msg: str):
             event_id = int(i['plannable_id'])
             break
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('查无此事件，请检查标题是否输入正确')]))
+        await app.send_group_message(group, MessageChain([Plain('查无此事件，请检查标题是否输入正确')]))
 
     url = 'http://canvas.tongji.edu.cn/api/v1/calendar_events/' + str(event_id)
     data = {'_method': 'DELETE', 'authenticity_token': parse.unquote(
         requests.utils.dict_from_cookiejar(s.cookies)['_csrf_token'])}
     r = s.post(url, data=data)
     if not is_json(r.text) or 'errors' in r.json():
-        await app.sendGroupMessage(group, MessageChain.create([Plain('删除失败！')]))
+        await app.send_group_message(group, MessageChain([Plain('删除失败！')]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('删除成功！')]))
+        await app.send_group_message(group, MessageChain([Plain('删除成功！')]))
 
 
 async def markfinish(app, s: Session, group, member, msg: str):
 
     text = msg.split(' ')
     if len(text) == 1:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('请输入标题！')]))
+        await app.send_group_message(group, MessageChain([Plain('请输入标题！')]))
     elif len(text) != 2:
         return
 
@@ -349,7 +349,7 @@ async def markfinish(app, s: Session, group, member, msg: str):
                 event_id = i['planner_override']['id']
             break
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('查无此事件，请检查标题是否输入正确')]))
+        await app.send_group_message(group, MessageChain([Plain('查无此事件，请检查标题是否输入正确')]))
 
     data = {'id': event_id, 'marked_complete': True, 'plannable_id': plannable_id,
             'plannable_type': 'calendar_event', 'user_id': get_id(member.id),
@@ -363,9 +363,9 @@ async def markfinish(app, s: Session, group, member, msg: str):
         r = s.put(url, data=data)
 
     if not is_json(r.text) or 'errors' in r.json():
-        await app.sendGroupMessage(group, MessageChain.create([Plain('标记为完成失败！')]))
+        await app.send_group_message(group, MessageChain([Plain('标记为完成失败！')]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('标记为完成成功！')]))
+        await app.send_group_message(group, MessageChain([Plain('标记为完成成功！')]))
 
 
 def markunfinsh():
@@ -388,7 +388,7 @@ async def courses_calender(app, s, group, member):
         sstr += f"{i['start'][11:16]} - {i['end'][11:16]}\n"
         sstr += i['title']
         sstr += '\n\n'
-    await app.sendGroupMessage(group, MessageChain.create([Plain(sstr[:-2])]))
+    await app.send_group_message(group, MessageChain([Plain(sstr[:-2])]))
 
 
 async def canvas(app, group, member, msg, s: Session):
@@ -396,7 +396,7 @@ async def canvas(app, group, member, msg, s: Session):
         s = canvas_session(s, member.id)
     except Exception as e:
         if str(e) == "验证码错误":
-            await app.sendGroupMessage(group, MessageChain.create([Plain(
+            await app.send_group_message(group, MessageChain([Plain(
                 '登录超时，请稍后再试。'
             )]))
         return
@@ -420,7 +420,7 @@ async def courses(app, group, member, msg, s: Session):
         s = courses_session(s, member.id)
     except Exception as e:
         if str(e) == "验证码错误":
-            await app.sendGroupMessage(group, MessageChain.create([Plain(
+            await app.send_group_message(group, MessageChain([Plain(
                 '登录超时，请稍后再试。'
             )]))
         return

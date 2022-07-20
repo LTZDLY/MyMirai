@@ -55,10 +55,10 @@ async def portune(app, group: int, member: int, var, model=''):
         p = Plain('\n你今天已经抽过签了，这是你今天抽到的签，欢迎明天再来~\n')
     img = drawing_pic(var, model)
     img.save("./source/bak1.png")
-    m = MessageChain.create(
+    m = MessageChain(
         [At(member), p, Img(path="./source/bak1.png")])
     m.__root__[0].display = ''
-    await app.sendGroupMessage(group, m)
+    await app.send_group_message(group, m)
 
 
 '''

@@ -14,6 +14,7 @@ from graia.ariadne.message.element import Image, Plain
 
 remote = 'wss://broadcastlv.chat.bilibili.com:2245/sub'
 
+# 心跳包为不携带数据的数据包，仅包含数据包头部信息，具体代表如后文所示。其中，心跳包的操作码为2
 hb = '00000010001000010000000200000001'
 
 
@@ -36,7 +37,7 @@ def get_data(room_id):
     text = json.dumps(data_json)
 
     # 握手包数据头
-    # 数据头长度为16，[0:4]为数据包长度，[5:6]为数据包头部长度，固定为16，[7:8]为协议版本，目前为1，
+    # 数据头长度为16，[1:4]为数据包长度，[5:6]为数据包头部长度，固定为16，[7:8]为协议版本，目前为1，
     # [9:12]为操作码，握手包为7代表认证并加入房间，[13:16]为sequence，可以取常数1
 
     # 对应为 长度[\x00\x00\x01\x02] 头部长度[\x00\x10] 协议版本[\x00\x01] 操作码[\x00\x00\x00\x07] sequence[\x00\x00\x00\x01]
@@ -92,10 +93,10 @@ async def sendHeartBeat(websocket, room_id):
         # print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
 
 
-async def receDM(app, websocket, room_id):
-    while True:
-        recv_text = await websocket.receive()
-        await printDM(app, recv_text, room_id)
+# async def receDM(app, websocket, room_id):
+#     while True:
+#         recv_text = await websocket.receive()
+#         await printDM(app, recv_text, room_id)
 
 # 将数据包传入：
 
@@ -158,7 +159,7 @@ async def printDM(app, data, room_id):
             sstr = '[OTHER] ' + jd['cmd']
 
         if sstr != '':
-            await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
+            await app.send_group_message(group, MessageChain([Plain(sstr)]))
         '''
 
         if(jd['cmd'] != 'LIVE'):
@@ -178,7 +179,7 @@ async def printDM(app, data, room_id):
             for j in i['group']:
                 sstr = '%s的直播开始啦！\n直播间标题：%s\n直播关键帧：' % (
                     info['user'], info['title'])
-                await app.sendGroupMessage(j, MessageChain.create([
+                await app.send_group_message(j, MessageChain([
                     Plain(sstr),
                     Image(url=info['keyframe']),
                     Plain('\n直播间地址：https://live.bilibili.com/%d' %

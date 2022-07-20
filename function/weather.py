@@ -51,7 +51,7 @@ async def reporttomorrow(app, group, city, day):
             '到' + daily['night_wind_power'] + '级'
 
     ss += '\n数据来源: 腾讯天气'
-    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+    await app.send_group_message(group, MessageChain([Plain(ss)]))
     pass
 
 
@@ -124,7 +124,7 @@ async def report(app, group, city):
         j += 1
     ss += '\n\n中央气象台 ' + now['update_time'][8:10] + ':' + now['update_time'][10:] + ' 发布' +\
         '\n数据来源: 腾讯天气'
-    await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+    await app.send_group_message(group, MessageChain([Plain(ss)]))
     pass
 
 
@@ -140,7 +140,7 @@ async def weather(app, inc, group, member, msg: str):
     data = s.get(url, headers=headers).json()
 
     if not data['data'].values():
-        await app.sendGroupMessage(group, MessageChain.create([Plain('切噜~找不到相关位置呢')]))
+        await app.send_group_message(group, MessageChain([Plain('切噜~找不到相关位置呢')]))
         return
 
     lit = list(data['data'].values())
@@ -148,7 +148,7 @@ async def weather(app, inc, group, member, msg: str):
         ss = '有多个相关位置呢，输入id进行选择，输入其他东西会取消查询切噜~：'
         for i in range(1, len(lit) + 1):
             ss += '\n' + str(i) + '：' + lit[i - 1]
-        await app.sendGroupMessage(group, MessageChain.create([Plain(ss)]))
+        await app.send_group_message(group, MessageChain([Plain(ss)]))
         # FIXME 这里尝试了最新版graia提供的interrupt功能，但我总觉得有更好的方法
 
         @Waiter.create_using_function([GroupMessage])
@@ -157,7 +157,7 @@ async def weather(app, inc, group, member, msg: str):
                 if is_int(waiter_message.asDisplay()):
                     id = int(waiter_message.asDisplay()) - 1
                     if id >= len(lit) or id < 0:
-                        await app.sendGroupMessage(group, MessageChain.create([Plain('查询被取消了切噜噜——')]))
+                        await app.send_group_message(group, MessageChain([Plain('查询被取消了切噜噜——')]))
                         return event
                     text = lit[id].split(', ')
                     if len(text) == 2:
@@ -176,7 +176,7 @@ async def weather(app, inc, group, member, msg: str):
                             return
                         await reporttomorrow(app, group, text, day)
                 else:
-                    await app.sendGroupMessage(group, MessageChain.create([Plain('查询被取消了切噜噜——')]))
+                    await app.send_group_message(group, MessageChain([Plain('查询被取消了切噜噜——')]))
                 return event
         await inc.wait(waiter)
 

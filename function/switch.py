@@ -27,11 +27,11 @@ async def switchMain(app, group: Group, switch: str):
         write_in_ini('data/switch.ini', str(group.id), 'on', '0')
         msg = '要睡咯切噜噜~...'
     elif switch == 'quit':
-        await app.sendGroupMessage(group, MessageChain.create([Plain('切噜走啦，拜拜！~')]))
+        await app.send_group_message(group, MessageChain([Plain('切噜走啦，拜拜！~')]))
         await app.quit(group)
     else:
         return
-    await app.sendGroupMessage(group, MessageChain(__root__=[Plain(msg)]))
+    await app.send_group_message(group, MessageChain(__root__=[Plain(msg)]))
 
 
 async def switchPcr(app, group: Group, switch: str):
@@ -44,4 +44,4 @@ async def switchPcr(app, group: Group, switch: str):
         msg = 'PCR团队战功能关闭'
     else:
         return
-    await app.sendGroupMessage(group, MessageChain(__root__=[Plain(msg)]))
+    await app.send_group_message(group, MessageChain(__root__=[Plain(msg)]))

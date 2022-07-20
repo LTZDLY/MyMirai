@@ -118,6 +118,6 @@ async def paraphrase(app, group: Group, msg: str, feedback=False) -> str:
         if msg.find(data[i] == -1):
             continue
         if feedback == True:
-            await app.sendGroupMessage(group, MessageChain(__root__=[Plain('发生转义：\n' + i + '->' + data[i])]))
+            await app.send_group_message(group, MessageChain(__root__=[Plain('发生转义：\n' + i + '->' + data[i])]))
         msg = msg.replace(i, data[i])
     return msg

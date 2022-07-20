@@ -248,7 +248,7 @@ async def get_daily(app, group):
         "\n地址：" + 'https://leetcode-cn.com/problems/' + \
         data['stat']['question__title_slug']
 
-    await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+    await app.send_group_message(group, MessageChain([Plain(s)]))
 
 
 async def get_rand(app, group):
@@ -276,7 +276,7 @@ async def get_rand(app, group):
         "\n地址：" + 'https://leetcode-cn.com/problems/' + \
         d['stat']['question__title_slug']
 
-    await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+    await app.send_group_message(group, MessageChain([Plain(s)]))
 
 
 async def luogu_rand(app, group):
@@ -301,7 +301,7 @@ async def luogu_rand(app, group):
         "\n难度：" + l[dif] +\
         "\n通过率：" + '{:.2%}'.format(int(d['totalAccepted'])/int(d['totalSubmit'])) +\
         "\n地址：" + 'https://www.luogu.com.cn/problem/' + d['pid']
-    await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+    await app.send_group_message(group, MessageChain([Plain(s)]))
 
 # print(get_question_by_id('1'))
 # print(get_question_translation('1'))

@@ -16,6 +16,6 @@ async def latex(app, group, s: str):
     text = parse.quote(text)
     text = text.replace('%2B', '&plus;')
     try:
-        await app.sendGroupMessage(group, MessageChain.create([Image(url=url + text)]))
+        await app.send_group_message(group, MessageChain([Image(url=url + text)]))
     except:
-        await app.sendGroupMessage(group, MessageChain.create([Plain('输入了无效的公式，请重试')]))
+        await app.send_group_message(group, MessageChain([Plain('输入了无效的公式，请重试')]))

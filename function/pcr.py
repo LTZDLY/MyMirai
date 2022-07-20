@@ -38,9 +38,9 @@ async def dayReportCollect(app, group):
             + '\n当前boss：' + r.json()["data"]["boss_info"]["name"] + '（' + life[r.json()["data"]["boss_info"]["total_life"]] + '王）'\
             + '\nboss hp：' + str(r.json()["data"]["boss_info"]["current_life"])\
             + ' / ' + str(r.json()["data"]["boss_info"]["total_life"])
-        await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+        await app.send_group_message(group, MessageChain([Plain(s)]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
+        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
 
 
 async def dayReportTotal(app, group, flag=False):
@@ -70,9 +70,9 @@ async def dayReportTotal(app, group, flag=False):
                 s = '今日未出满3刀人数：' + str(membernum) + ' / ' + str(len(r.json()["data"]))\
                     + '\n今日出刀总数：' + str(num) + ' / ' + \
                     str(3 * len(r.json()["data"]))
-        await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+        await app.send_group_message(group, MessageChain([Plain(s)]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
+        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
     pass
 
 
@@ -119,9 +119,9 @@ async def dayPersonFind(app, group, msg: str, flag=False):
             break
         if s == '':
             s = '查无此人，请确认id输入正确'
-        await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+        await app.send_group_message(group, MessageChain([Plain(s)]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
+        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
     pass
 
 
@@ -138,7 +138,7 @@ async def findWork(app, group, msg: str):
     else:
         ran = [0, 5]
     if ((ran[0] // 25) != (ran[1] // 25)):
-        await app.sendGroupMessage(group, MessageChain.create(
+        await app.send_group_message(group, MessageChain(
             [Plain('error: Invalued input')]))
         return
     page = ran[0] // 25
@@ -166,9 +166,9 @@ async def findWork(app, group, msg: str):
             for i in j["role_list"]:
                 s += id2character(data, i["id"]) + ' '
             pass
-        await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+        await app.send_group_message(group, MessageChain([Plain(s)]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
+        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
     pass
 
 
@@ -205,9 +205,9 @@ async def findWorkDetails(app, group, msg: str):
         s += '\n作业轴：\n' + r.json()["data"]["work"]
         if(r.json()["data"]["remark"] != ''):
             s += '\n备注：' + r.json()["data"]["remark"]
-        await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+        await app.send_group_message(group, MessageChain([Plain(s)]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain(r.json()["message"])]))
+        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
     pass
 
 
@@ -222,9 +222,9 @@ async def expand(app, group, msg: str):
     fr.close()
     wanna = short2name(data, text[1])
     if wanna != text[1]:
-        await app.sendGroupMessage(group, MessageChain.create([Plain(text[1] + " 可能是 " + wanna + " 的缩写")]))
+        await app.send_group_message(group, MessageChain([Plain(text[1] + " 可能是 " + wanna + " 的缩写")]))
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain("并未查到是什么的缩写，是本名也说不定哦！")]))
+        await app.send_group_message(group, MessageChain([Plain("并未查到是什么的缩写，是本名也说不定哦！")]))
 
 
 async def draw(app, group, upflag=False):
@@ -310,7 +310,7 @@ async def draw(app, group, upflag=False):
         sstr += 'UP池'
     else:
         sstr += "白金标准池"
-    await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
+    await app.send_group_message(group, MessageChain([Plain(sstr)]))
     pass
 
 
@@ -333,7 +333,7 @@ async def drawauto(app, group, msg: str, upflag=False):
         if i["name"] == wanna and (i["type"] == 0 or (upflag and i["up"] == 1)):
             break
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
     star3 = []
     star2 = []
@@ -426,7 +426,7 @@ async def drawauto(app, group, msg: str, upflag=False):
     else:
         for c in star3get:
             s += "\n" + c + "：" + str(star3get[c])
-    await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+    await app.send_group_message(group, MessageChain([Plain(s)]))
     pass
 
 
@@ -445,9 +445,9 @@ async def setUP(app, group, msg):
             i["up"] = 1
             break
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
-    await app.sendGroupMessage(group, MessageChain.create([Plain("将" + wanna + "设置为up卡成功！")]))
+    await app.send_group_message(group, MessageChain([Plain("将" + wanna + "设置为up卡成功！")]))
     with open(Localpath, "w") as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
@@ -469,9 +469,9 @@ async def offUP(app, group, msg):
             i["up"] = 0
             break
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
-    await app.sendGroupMessage(group, MessageChain.create([Plain("将" + wanna + "取消up卡成功！")]))
+    await app.send_group_message(group, MessageChain([Plain("将" + wanna + "取消up卡成功！")]))
     with open(Localpath, "w") as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
@@ -485,7 +485,7 @@ async def setD(app, group):
     data = json.load(fr)
     fr.close()
     data["double"] = True
-    await app.sendGroupMessage(group, MessageChain.create([Plain("将卡池设为双倍三星概率成功！")]))
+    await app.send_group_message(group, MessageChain([Plain("将卡池设为双倍三星概率成功！")]))
     with open(Localpath, "w") as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
@@ -499,7 +499,7 @@ async def offD(app, group):
     data = json.load(fr)
     fr.close()
     data["double"] = False
-    await app.sendGroupMessage(group, MessageChain.create([Plain("将卡池取消双倍三星概率成功！")]))
+    await app.send_group_message(group, MessageChain([Plain("将卡池取消双倍三星概率成功！")]))
     with open(Localpath, "w") as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
@@ -520,10 +520,10 @@ async def setDefine(app, group, msg):
         if wanna == i["name"]:
             if not text[2] in i["short"]:
                 i["short"].append(text[2])
-                await app.sendGroupMessage(group, MessageChain.create([Plain("添加缩写：" + wanna + " 缩写为 " + text[2])]))
+                await app.send_group_message(group, MessageChain([Plain("添加缩写：" + wanna + " 缩写为 " + text[2])]))
             break
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
     with open(Localpath, "w") as fw:
         jsObj = json.dumps(data)
@@ -545,12 +545,12 @@ async def offDefine(app, group, msg):
         if wanna == i["name"]:
             if text[2] in i["short"]:
                 i["short"].remove(text[2])
-                await app.sendGroupMessage(group, MessageChain.create([Plain("删除缩写：" + wanna + " 缩写为 " + text[2])]))
+                await app.send_group_message(group, MessageChain([Plain("删除缩写：" + wanna + " 缩写为 " + text[2])]))
             else:
-                await app.sendGroupMessage(group, MessageChain.create([Plain(wanna + "没有这个缩写哦！")]))
+                await app.send_group_message(group, MessageChain([Plain(wanna + "没有这个缩写哦！")]))
             break
     else:
-        await app.sendGroupMessage(group, MessageChain.create([Plain("卡池里没有这个角色哦！")]))
+        await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
     with open(Localpath, "w") as fw:
         jsObj = json.dumps(data)

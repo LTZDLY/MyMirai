@@ -4,7 +4,8 @@ import datetime
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Plain
 
-from function.bilibili import sign
+from function.bilibili import private_msg, sign
+from function.data import dancing_group
 from function.excel import readexcel
 
 
@@ -49,18 +50,27 @@ async def repeat(app):
 
     if sss != '':
         for i in group:
-            await app.sendGroupMessage(i, MessageChain.create([Plain(sss)]))
+            await app.send_group_message(i, MessageChain([Plain(sss)]))
 
     group = [1037928476]
 
 
+async def getprivate(app, group: int):
+    print('正在进行消息拉取...')
+    msg = private_msg(app)
+    if msg:
+        await app.send_group_message(group, msg)
+    else:
+        print('并没有拉取到东西')
+
+
 async def reminder(app, group: int, message: MessageChain, d: datetime.timedelta):
     await asyncio.sleep(d.total_seconds())
-    await app.sendGroupMessage(group, message.asSendable())
+    await app.send_group_message(group, message.asSendable())
 
 
 async def remindme(app, group: int, member: int, message: MessageChain):
-    message_a = MessageChain.create([At(member), Plain('\n')])
+    message_a = MessageChain([At(member), Plain('\n')])
     message_a.__root__[0].display = ''
     s = message.__root__[1].text
     text = s.split('后提醒我')
@@ -111,8 +121,8 @@ async def remindme(app, group: int, member: int, message: MessageChain):
         return
     asyncio.create_task(
         reminder(app, group, message_a.extend(message).asSendable(), d))
-    message_b = MessageChain.create([Plain('切噜~♪将在' + rep + '后提醒你：\n')])
-    await app.sendGroupMessage(group, message_b.extend(message).asSendable())
+    message_b = MessageChain([Plain('切噜~♪将在' + rep + '后提醒你：\n')])
+    await app.send_group_message(group, message_b.extend(message).asSendable())
 
 
 async def clock(app):
@@ -133,6 +143,8 @@ async def clock(app):
                 print("产生分的时间误差，开始矫正", t)
                 break
             asyncio.create_task(repeat(app))
+            asyncio.create_task(getprivate(app, dancing_group))
+
             # 这里用 create_task 而不用 await 主要是为了不让 repeat 函数占用时间导致误差
             if t.second != 0:
                 print("产生秒的时间误差，开始矫正", t)

@@ -28,7 +28,7 @@ async def priv_get(app):
             s += 'id=' + str(num + i) + '  ' + \
                 l[num + i].name + '(' + str(l[num + i].id) + ')'
         print(s)
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain(s)]))
+        await app.sendFriendMessage(hostqq, MessageChain([Plain(s)]))
         num += n
         s = ''
 
@@ -40,15 +40,15 @@ async def priv_se(app, message: MessageChain):
     if (len(ss) != 3):
         return
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain('id错误')]))
+        await app.sendFriendMessage(hostqq, MessageChain([Plain('id错误')]))
         return
     msga = message
     msga.__root__[1].text = msga.__root__[1].text.split(' ')[2]
     try:
-        await app.sendGroupMessage(l[int(ss[1])], msga.asSendable())
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain('发送成功')]))
+        await app.send_group_message(l[int(ss[1])], msga.asSendable())
+        await app.sendFriendMessage(hostqq, MessageChain([Plain('发送成功')]))
     except:
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain('发送失败')]))
+        await app.sendFriendMessage(hostqq, MessageChain([Plain('发送失败')]))
 
 
 async def priv_mute(app, message: MessageChain):
@@ -58,15 +58,15 @@ async def priv_mute(app, message: MessageChain):
     if (len(ss) != 4):
         return
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain('id错误')]))
+        await app.sendFriendMessage(hostqq, MessageChain([Plain('id错误')]))
         return
     mem = int(ss[2])
     t = float(ss[3])
     try:
         await set_mute(app, l[int(ss[1])], [mem], t)
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain('操作成功')]))
+        await app.sendFriendMessage(hostqq, MessageChain([Plain('操作成功')]))
     except:
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain('操作失败')]))
+        await app.sendFriendMessage(hostqq, MessageChain([Plain('操作失败')]))
 
 
 async def priv_toqq(app, message: MessageChain):
@@ -77,13 +77,13 @@ async def priv_toqq(app, message: MessageChain):
     msga.__root__[1].text = msga.__root__[1].text.split(' ')[2]
     try:
         await app.sendFriendMessage(int(ss[1]), msga.asSendable())
-        await app.sendFriendMessage(hostqq, MessageChain.create([Plain('发送成功')]))
+        await app.sendFriendMessage(hostqq, MessageChain([Plain('发送成功')]))
     except:
         try:
             await app.sendTempMessage(int(ss[1]), msga.asSendable())
-            await app.sendFriendMessage(hostqq, MessageChain.create([Plain('发送成功')]))
+            await app.sendFriendMessage(hostqq, MessageChain([Plain('发送成功')]))
         except:
-            await app.sendFriendMessage(hostqq, MessageChain.create([Plain('发送失败')]))
+            await app.sendFriendMessage(hostqq, MessageChain([Plain('发送失败')]))
 
 
 async def priv_handler(app, message: MessageChain):

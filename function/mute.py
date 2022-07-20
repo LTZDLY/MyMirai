@@ -86,7 +86,7 @@ async def set_mute(app, group: Group, mutelist: list, mutetime):
                 text = sender.name + '(' + str(sender.id) + ')' + \
                     "被我禁言" + time_to_str(int(time))
                 await app.muteMember(group, sender, int(time))
-            await app.sendGroupMessage(group, MessageChain.create([Plain(text)]))
+            await app.send_group_message(group, MessageChain([Plain(text)]))
 
 
 '''

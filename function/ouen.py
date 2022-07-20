@@ -63,6 +63,6 @@ async def ouen(app, txt: str, group):
     # out1.show()
     out1.save("./source/bak.png")
 
-    await app.sendGroupMessage(group, MessageChain.create([
+    await app.send_group_message(group, MessageChain([
         Img(path="./source/bak.png")
     ]))

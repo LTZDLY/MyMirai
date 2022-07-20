@@ -12,10 +12,10 @@ async def seImage(app, group, msg: str):
     file = ''
     if(msg.find('小蓝') != -1):
         msg = msg.replace('小蓝', '爱抖露')
-        # await app.sendGroupMessage(group, MessageChain.create([Plain("已自动进行转义：小蓝->爱抖露")]))
+        # await app.send_group_message(group, MessageChain([Plain("已自动进行转义：小蓝->爱抖露")]))
     elif(msg.find('美少女') != -1):
         msg = msg.replace('美少女', '爱抖露')
-        # await app.sendGroupMessage(group, MessageChain.create([Plain("已自动进行转义：美少女->爱抖露")]))
+        # await app.send_group_message(group, MessageChain([Plain("已自动进行转义：美少女->爱抖露")]))
     if(msg.find('猫') != -1):
         filePath = './source/img/cat/'
     elif(msg.find('狗') != -1):
@@ -46,9 +46,9 @@ async def seImage(app, group, msg: str):
         file = filePath + k[random.randint(0, len(k) - 1)]
     print(file)
     try:
-        message = MessageChain.create([
+        message = MessageChain([
             Image(path=file)
         ])
-        await app.sendGroupMessage(group, message)
+        await app.send_group_message(group, message)
     except:
         return

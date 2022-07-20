@@ -149,7 +149,7 @@ async def printDM(app, data, room_id):
             sstr = '[OTHER] ' + jd['cmd']
 
         if sstr != '':
-            await app.sendGroupMessage(group, MessageChain.create([Plain(sstr)]))
+            await app.send_group_message(group, MessageChain([Plain(sstr)]))
         '''
 
         if(jd['cmd'] != 'LIVE'):
@@ -166,7 +166,7 @@ async def printDM(app, data, room_id):
             for j in i['group']:
                 sstr = '%s的直播开始啦！\n直播间标题：%s\n直播关键帧：' % (
                     info['user'], info['title'])
-                await app.sendGroupMessage(j, MessageChain.create([
+                await app.send_group_message(j, MessageChain([
                     Plain(sstr),
                     Image(url=info['keyframe']),
                     Plain('\n直播间地址：https://live.bilibili.com/%d' %

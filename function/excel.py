@@ -40,4 +40,4 @@ async def readexcel(app, group):
         for i in lit:
             s += '\n%s班%s' % (i['class'], i['name'])
         s += '\n祝他们生日快乐！'
-        await app.sendGroupMessage(group, MessageChain.create([Plain(s)]))
+        await app.send_group_message(group, MessageChain([Plain(s)]))
