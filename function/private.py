@@ -36,7 +36,7 @@ async def priv_get(app):
 async def priv_se(app, message: MessageChain):
     l = await app.getGroupList()
     l.sort(key=takeSecond)
-    ss = message.asDisplay().split(' ')
+    ss = message.display.split(' ')
     if (len(ss) != 3):
         return
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
@@ -54,7 +54,7 @@ async def priv_se(app, message: MessageChain):
 async def priv_mute(app, message: MessageChain):
     l = await app.getGroupList()
     l.sort(key=takeSecond)
-    ss = message.asDisplay().split(' ')
+    ss = message.display.split(' ')
     if (len(ss) != 4):
         return
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
@@ -70,7 +70,7 @@ async def priv_mute(app, message: MessageChain):
 
 
 async def priv_toqq(app, message: MessageChain):
-    ss = message.asDisplay().split(' ')
+    ss = message.display.split(' ')
     if (len(ss) != 3):
         return
     msga = message
@@ -87,11 +87,11 @@ async def priv_toqq(app, message: MessageChain):
 
 
 async def priv_handler(app, message: MessageChain):
-    if (message.asDisplay() == 'get'):
+    if (message.display == 'get'):
         await priv_get(app)
-    if (message.asDisplay().startswith('se')):
+    if (message.display.startswith('se')):
         await priv_se(app, message)
-    if (message.asDisplay().startswith('mute')):
+    if (message.display.startswith('mute')):
         await priv_mute(app, message)
-    if (message.asDisplay().startswith('toQQ')):
+    if (message.display.startswith('toQQ')):
         await priv_toqq(app, message)

@@ -1,8 +1,11 @@
 import datetime
+import time
 
 import xlrd
+import xlsxwriter
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+
 
 def takeclass(elem):
     return elem['class']
@@ -41,3 +44,21 @@ async def readexcel(app, group):
             s += '\n%s班%s' % (i['class'], i['name'])
         s += '\n祝他们生日快乐！'
         await app.send_group_message(group, MessageChain([Plain(s)]))
+
+async def packup(app, group):
+    data = await app.get_member_list(group)
+    workbook = xlsxwriter.Workbook("./data/" + str(group) + ".xlsx")  # 创建工作簿
+    xlsxwriter.Workbook()
+    worksheet1 = workbook.add_worksheet("sheet1")  # 创建子表
+    worksheet1.activate()  # 激活表
+    title = ['序号', 'qq号', 'qq昵称','加群时间','最后发言时间']  # 设置表头
+    worksheet1.write_row('A1', title)  # 从A1单元格开始写入表头
+    i = 2  # 从第二行开始写入数据
+    for j in range(len(data)):
+        jt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[j].join_timestamp))
+        lst = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[j].last_speak_timestamp))
+        insertData = [j + 1, str(data[j].id), data[j].name, jt, lst]
+        row = 'A' + str(i)
+        worksheet1.write_row(row, insertData)
+        i += 1
+    workbook.close()  # 关闭表

@@ -427,7 +427,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 continue
             # await app.send_group_message(group, MessageChain([Plain('发生转义：\n' + i + '->' + data[i])]))
             msg = msg.replace(i, data[i])
-        msgs = message.as_persistent_string()
+        msgs = message.as_persistent_string(exclude=[Forward])
         data = loadDefine()
         for i in data:
             if msgs.find(i) == -1:
@@ -565,6 +565,15 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         if msg.split(' ')[0].endswith('天气'):
             await weather(app, inc, group, member, msg)
 
+        # if member.id == hostqq and msg == ("测试拉取"):
+        #     print('正在进行消息拉取...')
+        #     mmsg = private_msg(app)
+        #     if mmsg:
+        #         await app.send_group_message(group, mmsg)
+        #     else:
+        #         print('并没有拉取到东西')
+
+
         # TODO 4m3和1块钱公告爬取
 
         if member.id == hostqq and msg.startswith("danmaku.end"):
@@ -576,6 +585,27 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 m = MessageChain([At(hostqq), Plain("你并没有在视奸")])
                 m.__root__[0].display = ''
                 await app.send_group_message(group, m)
+
+        if member.id == hostqq and msg == "packup":
+            try:
+                await packup(app, group.id)
+                await app.send_group_message(group, MessageChain([Plain("备份群成员信息成功")]))
+            except:
+                await app.send_group_message(group, MessageChain([Plain("备份群成员信息失败")]))
+                traceback.print_exc()
+                await app.send_group_message(group, MessageChain([Plain(traceback.format_exc())]))
+        
+        if member.id == hostqq and msg == "packupall":
+            try:
+                list = await app.get_group_list()
+                for i in list:
+                    await packup(app, i.id)
+                await app.send_group_message(group, MessageChain([Plain("备份所有群成员信息成功")]))
+            except:
+                await app.send_group_message(group, MessageChain([Plain("备份所有群成员信息失败")]))
+                traceback.print_exc()
+                await app.send_group_message(group, MessageChain([Plain(traceback.format_exc())]))
+        
 
         # FIXME leetcode每日题库好像有点问题记得修
         if msg == "leetcode.daily":
@@ -681,7 +711,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         if message.display.find("后提醒我") != -1:
             await remindme(app, group.id, member.id, message)
 
-        mmm = message.as_persistent_string()
+        mmm = message.as_persistent_string(exclude=[Forward])
         if mmm.find('[mirai:At:{"target":%d' % app.account) != -1:
             text = mmm.split(' ')
             if len(text) == 2:
@@ -857,7 +887,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
 
 @bcc.receiver(
     GroupMessage,
-    decorators=[check_group(), DetectPrefix("expand")]
+    decorators=[check_group(), DetectPrefix("expand ")]
 )
 async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
     # 瞎搞模块
@@ -867,22 +897,23 @@ async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
             txt = text[1]
             for i in text[2:]:
                 txt += ' ' + i
+        # FIXME 当txt全为空格组成时会报错
         if not txt.isascii():
             await app.send_group_message(group, MessageChain([Plain("你好好反思反思你在说什么")]))
             return
         url = "https://lab.magiconch.com/api/nbnhhsh/guess"
-        r = requests.post(url, data={"text": txt})
-        s = json.loads(r.text)[0]
-        if s:
-            if 'inputting' in s and s['inputting']:
-                ss = "%s 有可能是：" % s['name']
-                s['inputting'].sort()
-                for i in s['inputting']:
+        r = requests.post(url, data={"text": txt}).json()
+        if r:
+            r = r[0]
+            if 'inputting' in r and r['inputting']:
+                ss = "%s 有可能是：" % r['name']
+                r['inputting'].sort()
+                for i in r['inputting']:
                     ss += '\n' + i
-            elif 'trans' in s and s['trans']:
-                ss = "%s 可能是：" % s['name']
-                s['trans'].sort()
-                for i in s['trans']:
+            elif 'trans' in r and r['trans']:
+                ss = "%s 可能是：" % r['name']
+                r['trans'].sort()
+                for i in r['trans']:
                     ss += '\n' + i
             else:
                 ss = "你在说些什么"
