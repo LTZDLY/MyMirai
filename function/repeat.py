@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Plain
@@ -55,11 +56,15 @@ async def repeat(app):
     group = [1037928476]
 
 
-async def getprivate(app, group: int):
+async def getprivate(app, kind):
+    Localpath = './data/cookies.json'
+    with open(Localpath, 'r', encoding='utf8')as fp:
+        cookies = json.load(fp)
+    data = cookies[kind]
     print('正在进行消息拉取...')
-    msg = private_msg(app)
+    msg = private_msg(app, data)
     if msg:
-        await app.send_group_message(group, msg)
+        await app.send_group_message(data['group'], msg)
     else:
         print('并没有拉取到东西')
 
@@ -74,7 +79,7 @@ async def remindme(app, group: int, member: int, message: MessageChain):
     message_a.__root__[0].display = ''
     s = message.__root__[1].text
     text = s.split('后提醒我')
-    if(len(text) <= 1):
+    if (len(text) <= 1):
         return
     else:
         rep = text[0]
@@ -84,23 +89,23 @@ async def remindme(app, group: int, member: int, message: MessageChain):
         message.__root__[1].text = t
     day = hour = minute = second = 0
     text = text[0]
-    if(text.find('天') != -1):
+    if (text.find('天') != -1):
         text = text.split('天')
         day = text[0]
         text = text[1]
-    if(text.find('小时') != -1):
+    if (text.find('小时') != -1):
         text = text.split('小时')
         hour = text[0]
         text = text[1]
-    if(text.find('分钟') != -1):
+    if (text.find('分钟') != -1):
         text = text.split('分钟')
         minute = text[0]
         text = text[1]
-    elif(text.find('分') != -1):
+    elif (text.find('分') != -1):
         text = text.split('分')
         minute = text[0]
         text = text[1]
-    if(text.find('秒') != -1):
+    if (text.find('秒') != -1):
         text = text.split('秒')
         second = text[0]
         text = text[1]
@@ -143,7 +148,13 @@ async def clock(app):
                 print("产生分的时间误差，开始矫正", t)
                 break
             asyncio.create_task(repeat(app))
-            asyncio.create_task(getprivate(app, dancing_group))
+            Localpath = './data/cookies.json'
+            with open(Localpath, 'r', encoding='utf8')as fp:
+                cookies = json.load(fp)
+            settings = cookies['settings']
+            for i in settings:
+                if settings[i] == 1:
+                    asyncio.create_task(getprivate(app, i))
 
             # 这里用 create_task 而不用 await 主要是为了不让 repeat 函数占用时间导致误差
             if t.second != 0:

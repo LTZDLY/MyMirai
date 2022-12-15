@@ -54,6 +54,7 @@ from function.private import *
 from function.repeat import *
 from function.signup import *
 from function.switch import *
+from function.todotree import *
 from function.weather import *
 
 live = {}
@@ -299,7 +300,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             return
         if message.display.startswith('help '):
             text = message.display.split(' ')
-            if(len(text) != 2):
+            if (len(text) != 2):
                 return
             sstr = ''
             if text[1] == 'canvas':
@@ -442,7 +443,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 message.display == '草' or message.display == '艹'):
             flag = random.randint(0, 99)
             num = random.randint(5, 94)
-            if(abs(flag - num) <= 5):
+            if (abs(flag - num) <= 5):
                 await app.send_group_message(group, message.asSendable())
 
         # TODO 实装通过bigfun实现的会战信息查询系统
@@ -500,7 +501,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             for i in data['data']:
                 if room_id == str(i['room_id']):
                     if group.id in i['group']:
-                        if(len(i['group']) > 1):
+                        if (len(i['group']) > 1):
                             i['group'].remove(group.id)
                         else:
                             data['data'].remove(i)
@@ -573,7 +574,6 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         #     else:
         #         print('并没有拉取到东西')
 
-
         # TODO 4m3和1块钱公告爬取
 
         if member.id == hostqq and msg.startswith("danmaku.end"):
@@ -594,7 +594,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 await app.send_group_message(group, MessageChain([Plain("备份群成员信息失败")]))
                 traceback.print_exc()
                 await app.send_group_message(group, MessageChain([Plain(traceback.format_exc())]))
-        
+
         if member.id == hostqq and msg == "packupall":
             try:
                 list = await app.get_group_list()
@@ -605,7 +605,6 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 await app.send_group_message(group, MessageChain([Plain("备份所有群成员信息失败")]))
                 traceback.print_exc()
                 await app.send_group_message(group, MessageChain([Plain(traceback.format_exc())]))
-        
 
         # FIXME leetcode每日题库好像有点问题记得修
         if msg == "leetcode.daily":
@@ -624,7 +623,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             await latex(app, group, msg)
 
         if message.display.startswith("define "):
-            if(permissionCheck(member.id, group.id) == 3):
+            if (permissionCheck(member.id, group.id) == 3):
                 define(message.display)
 
         # 切噜语模块
@@ -690,7 +689,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                     else:
                         ans = [0] * len(op)
                         for i in range(nn):
-                            while(True):
+                            while (True):
                                 a = random.randint(-1, len(op))
                                 if a != -1 and a != len(op):
                                     ans[a] += 1
@@ -763,19 +762,31 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         # 测试拉取
 
         if message.display.startswith("测试拉取"):
-            msg_list = private_msg(app)
-            if msg_list:
-                await app.send_group_message(group, msg_list)
+            sstr = message.display.split(' ', 2)
+            if len(sstr) < 2:
+                await app.send_group_message(group, MessageChain([Plain("缺少参数")]))
             else:
-                await app.send_group_message(group, MessageChain([Plain("没有拉取到东西")]))
-
+                Localpath = './data/cookies.json'
+                with open(Localpath, 'r', encoding='utf8')as fp:
+                    cookies = json.load(fp)
+                data = cookies[sstr[1]]
+                print('正在进行消息拉取...')
+                msg_list = private_msg(app, data)
+                if msg_list:
+                    await app.send_group_message(group, msg_list)
+                else:
+                    await app.send_group_message(group, MessageChain([Plain("没有拉取到东西")]))
         # pcr运势模块
         if message.display.startswith("运势"):
             t = datetime.datetime.now() - datetime.timedelta(hours=4)
+            # 此处p是指运势
             if not 'p' in bed:
+                print("开机到现在第一个抽运势")
                 bed['p'] = {}
             if not member.id in bed['p']:
+                print(f"{member.name}第一次抽运势")
                 bed['p'][member.id] = [t, '', {}]
+            print(bed['p'][member.id])
             await portune(app, group, member.id, bed['p'][member.id])
 
         # 明日方舟模块
@@ -851,6 +862,13 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         #     url = message.__root__[2].url
         #     await app.send_group_message(group, MessageChain([Plain(url)]))
             # arkRecruit(url)
+
+        if msg == 'help.todo':
+            await app.send_group_message(group, MessageChain([Plain(help_todo)]))
+        if msg.startswith('todo.'):
+            m = funTodo(msg, member.id)
+            if m:
+                await app.send_group_message(group, MessageChain([Plain(m)]))
 
         # 瞎搞模块
         if message.display == "咕一下":
@@ -981,7 +999,14 @@ async def bot_kicked_hanler(app: Ariadne, event: BotLeaveEventKick):
 
 @bcc.receiver(ApplicationLaunched)
 async def repeattt(app: Ariadne):
-    asyncio.create_task(private_msg_init(app, dancing_group))
+    
+    Localpath = './data/cookies.json'
+    with open(Localpath, 'r', encoding='utf8')as fp:
+        cookies = json.load(fp)
+    settings = cookies['settings']
+    for i in settings:
+        if settings[i] == 1:
+            asyncio.create_task(private_msg_init(app, cookies[i]))
 
     # TODO 实装整点报时之类的功能
     asyncio.create_task(clock(app))

@@ -65,7 +65,7 @@ async def end(app, group):
 
 async def change(app, group, msg: str):
     text = msg.split(' ')
-    if(len(text) < 2):
+    if (len(text) < 2):
         return
     title = text[1]
     for i in range(2, len(text)):
@@ -84,7 +84,7 @@ async def change(app, group, msg: str):
 
 async def triple(app, group, msg: str):
     text = msg.split(' ')
-    if(len(text) < 2):
+    if (len(text) < 2):
         return
     av = 0
     if text[1].startswith("av"):
@@ -104,17 +104,17 @@ async def triple(app, group, msg: str):
         await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
 
 
-async def private_msg_init(app, group):
-    Localpath = './data/bili_private.json'
+async def private_msg_init(app, tcookie):
+    Localpath = f"./data/bili_private_{tcookie['name']}.json"
     import os
     if os.path.exists(Localpath):
         return
 
     # 检测到文件不存在，首先进行初始化
-    await app.send_group_message(group, MessageChain([Plain("检测到文件不存在，首先进行初始化")]))
+    await app.send_group_message(tcookie['group'], MessageChain([Plain(f"检测到{tcookie['name']}文件不存在，首先进行初始化")]))
 
     bili_private = {}
-    headers = {"cookie": dancing_cookie}
+    headers = {"cookie": tcookie['cookie']}
     # 首先访问这个地址，获取所有的会话信息。
     url = 'https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?session_type=1&size=200'
     r = requests.get(url, headers=headers)
@@ -136,16 +136,16 @@ async def private_msg_init(app, group):
         fw.write(jsObj)
         fw.close()
 
-    await app.send_group_message(group, MessageChain([Plain(f"初始化结束，本次初始化共加载了{len(bili_private)}个人的通信信息。")]))
+    await app.send_group_message(tcookie['group'], MessageChain([Plain(f"初始化结束，本次初始化共加载了{len(bili_private)}个人的通信信息。")]))
 
 
-def private_msg(app):
-    Localpath = './data/bili_private.json'
+def private_msg(app, tcookie):
+    Localpath = f"./data/bili_private_{tcookie['name']}.json"
     with open(Localpath, 'r', encoding='utf8')as fp:
         bili_private = json.load(fp)
 
     # print(bili_private)
-    headers = {"cookie": dancing_cookie}
+    headers = {"cookie": tcookie['cookie']}
     # 首先访问这个地址，获取所有的会话信息。
     url = 'https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?session_type=1&size=10'
     r = requests.get(url, headers=headers)
@@ -185,13 +185,13 @@ def private_msg(app):
         fw.close()
 
     if msgs:
-        return bili_private_handler(app, msgs)
+        return bili_private_handler(app, msgs, tcookie)
 
     # print(len(msg), i['talker_id'])
 
 
-def bili_private_handler(app, msgs):
-    headers = {"cookie": dancing_cookie}
+def bili_private_handler(app, msgs, tcookie):
+    headers = {"cookie": tcookie['cookie']}
     msg_list = []
     num_people = 0
     num_message = 0
@@ -254,7 +254,7 @@ def bili_private_handler(app, msgs):
                     [Image(path='./source/bili_bak.png')]),
             )
         )
-    
+
     message = MessageChain(Forward(nodeList=fwd_nodeList))
     return message
 

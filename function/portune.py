@@ -48,7 +48,11 @@ async def portune(app, group: int, member: int, var, model=''):
 
     t = datetime.datetime.now() - datetime.timedelta(hours=4)
     if var[0].date() != t.date():
-        var = [t, '', {}]
+        # var是一个记录抽到的签的三元组，其中第一项为日期，第二项为图片，第三项为文字
+        print("他今天还没抽过运势")
+        var[0] = t
+        var[1] = ''
+        var[2] = {}
 
     p = Plain('')
     if var[1] and var[2]:
@@ -78,9 +82,11 @@ async def portune_kyaru(bot, ev):
 
 def drawing_pic(var=None, model='') -> Image:
     if not var:
+        print("他今天还没抽过运势")
         base_img = ''
         text = {}
     else:
+        print("他抽过运势了，用记录的结果")
         base_img = var[1]
         text = var[2]
 
