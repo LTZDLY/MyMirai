@@ -32,33 +32,48 @@ def readTodo():
     return data
 
 
-def getTodo(member, data):
+def getTodo(member, data, form_name):
     if not member in data:
-        return []
-    return data[member]
+        return "完全没有事情要做了噜~"
+    if form_name:
+        if not form_name in data[member]:
+            return f"表{form_name}中没有事情要做了噜~"
+        return toMsg(data[member][form_name], form_name)
+    return showtoMsg(data[member])
 
 
-def setTodo(member, data, thing):
+def setTodo(member, data, thing, form_name):
     Localpath = 'data/todo.json'
+    if not form_name:
+        form_name = 'defalt'
     if not member in data:
-        data[member] = [thing]
+        data[member] = {form_name: [thing]}
     else:
-        data[member].append(thing)
+        if not form_name in data[member]:
+            data[member][form_name] = [thing]
+        else:
+            data[member][form_name].append(thing)
     jsObj = json.dumps(data)
     with open(Localpath, "w") as fw:
         fw.write(jsObj)
         fw.close()
-    return data[member]
+    return data[member][form_name]
 
 
-def rmTodo(member, data, num):
+def rmTodo(member, data, num, form_name):
     Localpath = 'data/todo.json'
     if not member in data:
         return []
-    l = data[member]
+    if not form_name:
+        form_name = 'defalt'
+    if not form_name in data[member]:
+        return []
+    l = data[member][form_name]
     if num > len(l):
         return l
     del (l[num - 1])
+    if not data[member][form_name]:
+        del data[member][form_name]
     jsObj = json.dumps(data)
     with open(Localpath, "w") as fw:
         fw.write(jsObj)
@@ -66,7 +81,7 @@ def rmTodo(member, data, num):
     return l
 
 
-def toMsg(l: list):
+def showtoMsg(l: list):
     if not l:
         return "没有事情要做了噜~"
     msg = "要做的事情："
@@ -75,18 +90,35 @@ def toMsg(l: list):
     return msg
 
 
+def toMsg(l: list, form_name: str):
+    if not l:
+        return f"表{form_name}中没有事情要做了噜~"
+    msg = f"{form_name}中要做的事情："
+    for i in range(0, len(l)):
+        msg += f"\n{i + 1}. {l[i]}"
+    return msg
+
+
 def funTodo(msg, member):
     member = str(member)
     text = msg.split(' ', 1)
+    txt = text[0].split('.')
+    if len(txt) == 3:
+        form_name = txt[1]
+        command = txt[2]
+    elif len(txt) == 2:
+        form_name = ''
+        command = txt[1]
     data = readTodo()
-    if msg == 'todo.show':
-        l = getTodo(member, data)
-        return toMsg(l)
-    if text[0] == 'todo.add':
+    if command == 'show':
+        return getTodo(member, data, form_name)
+    if command == 'add':
         if len(text) < 2:
             return
-        l = setTodo(member, data, text[1])
-        return toMsg(l)
+        if not form_name:
+            form_name = 'defalt'
+        l = setTodo(member, data, text[1], form_name)
+        return toMsg(l, form_name)
     if text[0] == 'todo.rm':
         lit = text[1].split(' ')
         num = []
@@ -96,14 +128,20 @@ def funTodo(msg, member):
             except:
                 pass
         num.sort(reverse=True)
+        if not form_name:
+            form_name = 'defalt'
         for i in num:
-            l = rmTodo(member, data, i)
-        return toMsg(l)
+            l = rmTodo(member, data, i, form_name)
+        return toMsg(l, form_name)
     pass
 
 
 if __name__ == "__main__":
     while (1):
         msg = input()
-        funTodo(msg, 123)
+        print(funTodo(msg, 123))
     pass
+
+# todo.表名.show
+# todo.表名.add
+# todo.表名.rm

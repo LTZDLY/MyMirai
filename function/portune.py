@@ -161,6 +161,8 @@ def luck_get_info(charaid):
         if charaid in i['charaid']:
             typewords = i['type']
             desc = random.choice(typewords)
+            # while desc['good-luck'] < 7:
+            #     desc = random.choice(typewords)
             return desc, get_luck_type(desc)
     raise Exception('luck description not found')
 

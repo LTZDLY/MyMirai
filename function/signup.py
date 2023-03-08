@@ -58,8 +58,8 @@ def choice(msg: str) -> str:
     for i in text:
         if i == '':
             text.remove(i)
-    if (len(text) == 1):
-        return '只有一项就不用选了吧'
+    # if (len(text) == 1):
+    #     return '只有一项就不用选了吧'
     if (len(text) > 50):
         return '选项太多选不过来了呜呜呜'
     r = -1

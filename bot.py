@@ -418,6 +418,14 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         if member.id == hostqq and message.display.startswith("bilibili"):
             await bilibili(app, group, message.display)
 
+        if member.id == 1585165857 or member.id == 349468958:
+            if message.display == "开始直播":
+                await get_gravity(app, group, member)
+            if message.display == "关闭直播":
+                await end_gravity(app, group)
+            if message.display.startswith("更改直播间标题"):
+                await change_gravity(app, group, message.display)
+
         if member.id == hostqq and message.display == '生日测试':
             await readexcel(app, 958056260)
 
@@ -663,26 +671,30 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 s = s.replace('  ', ' ')
             s = s.replace("choice ", '', 1)
             msg = choice(s)
-            await app.send_group_message(group, MessageChain(msg))
+            await app.send_group_message(group, MessageChain.from_persistent_string(msg))
         if msg.startswith("选择 "):
             s = msgs
             while s.find('  ') != -1:
                 s = s.replace('  ', ' ')
             s = s.replace("选择 ", '', 1)
             msg = choice(s)
-            await app.send_group_message(group, MessageChain(msg))
+            await app.send_group_message(group, MessageChain.from_persistent_string(msg))
         if msg.startswith("选择"):  # 多次选择
-            while msg.find('  ') != -1:
-                msg = msg.replace('  ', ' ')
+            s = msgs
+            while s.find('  ') != -1:
+                s = s.replace('  ', ' ')
             pattern = re.compile(r'选择\d+')
-            p = pattern.findall(msg)
+            p = pattern.findall(s)
             if p:
                 nn = int(p[0].replace('选择', ''))
                 if nn > 1000000:
                     await app.send_group_message(group, MessageChain([Plain("选择次数太多选不了噜~")]))
                 else:
-                    op = msg.split(' ')[1:]
-                    if op[-1] == '':
+                    op = s.split(' ')[1:]
+                    if not op:
+                        await app.send_group_message(group, MessageChain([Plain("选啥")]))
+                        return
+                    while op[-1] == '':
                         del op[-1]
                     if not op:
                         await app.send_group_message(group, MessageChain([Plain("选啥")]))
@@ -697,7 +709,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                         sstr = '{}*{}'.format(op[0], ans[0])
                         for i in range(1, len(op)):
                             sstr += ', {}*{}'.format(op[i], ans[i])
-                        await app.send_group_message(group, MessageChain([Plain(sstr)]))
+                        await app.send_group_message(group, MessageChain.from_persistent_string(sstr))
 
         # echo模块
         if msg.startswith("echo ") and msg != "echo ":
@@ -708,7 +720,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             pass
 
         if message.display.find("后提醒我") != -1:
-            await remindme(app, group.id, member.id, message)
+            await remindme(app, group.id, member.id, message.copy())
 
         mmm = message.as_persistent_string(exclude=[Forward])
         if mmm.find('[mirai:At:{"target":%d' % app.account) != -1:
@@ -777,17 +789,101 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 else:
                     await app.send_group_message(group, MessageChain([Plain("没有拉取到东西")]))
         # pcr运势模块
-        if message.display.startswith("运势"):
-            t = datetime.datetime.now() - datetime.timedelta(hours=4)
+        if message.display == "运势":
+            t = datetime.datetime.now() - datetime.timedelta(hours=0)
             # 此处p是指运势
             if not 'p' in bed:
-                print("开机到现在第一个抽运势")
+                # print("开机到现在第一个抽运势")
                 bed['p'] = {}
             if not member.id in bed['p']:
-                print(f"{member.name}第一次抽运势")
+                # print(f"{member.name}第一次抽运势")
                 bed['p'][member.id] = [t, '', {}]
-            print(bed['p'][member.id])
+            # print(bed['p'][member.id])
             await portune(app, group, member.id, bed['p'][member.id])
+
+        # 今日老婆模块
+        if message.display == "今日老婆":
+            # 在bed中建立wife存储今日老婆
+            if not 'wife' in bed:
+                bed['wife'] = {}
+            now = datetime.datetime.today()
+            add = datetime.timedelta(hours=0)
+            now -= add
+            # 如果换日，则清空
+            if not now.date() in bed['wife']:
+                bed['wife'] = {}
+                bed['wife'][now.date()] = {}
+            if not group.id in bed['wife'][now.date()]:
+                bed['wife'][now.date()][group.id] = {}
+
+            n1 = member
+            if not member.id in bed['wife'][now.date()][group.id]:
+                ms = await app.get_member_list(group)
+                if len(ms) - len(bed['wife'][now.date()][group.id]) != 1:
+                    while (n1.id == member.id or n1.id in bed['wife'][now.date()][group.id]):
+                        n1 = random.choice(ms)
+                    bed['wife'][now.date()][group.id][n1.id] = member.id
+                    bed['wife'][now.date()][group.id][member.id] = n1.id
+                else:
+                    await app.send_group_message(group.id, MessageChain([
+                        At(member), Plain(" 群里没人能当你老婆了噜~")
+                    ]))
+                    return
+            else:
+                n1 = bed['wife'][now.date()][group.id][member.id]
+                n1 = await app.get_member(group, n1)
+            await app.send_group_message(group, MessageChain([
+                At(member), Plain(" 你今天的老婆是：\n"),
+                Img(data_bytes=await n1.get_avatar(140)),
+                Plain(f"\n{n1.name}（{n1.id}）")
+            ]))
+
+        # 群老婆和群sabi
+        if msg == "群老婆":
+            # 在bed中建立allwife存储大家的老婆
+            if not 'allwife' in bed:
+                bed['allwife'] = {}
+            now = datetime.datetime.today()
+            add = datetime.timedelta(hours=0)
+            now -= add
+            # 如果换日，则清空
+            if not now.date() in bed['allwife']:
+                bed['allwife'] = {}
+                bed['allwife'][now.date()] = {}
+            n1 = member
+            if not group.id in bed['allwife'][now.date()]:
+                n1 = random.choice(await app.get_member_list(group))
+                bed['allwife'][now.date()][group.id] = n1.id
+            else:
+                n1 = await app.get_member(group, bed['allwife'][now.date()][group.id])
+            await app.send_group_message(group, MessageChain([
+                Plain("今天你群的老婆是：\n"),
+                Img(data_bytes=await n1.get_avatar(140)),
+                Plain(f"\n{n1.name}（{n1.id}）")
+            ]))
+
+        # if msg == "群sabi":
+        #     # 在bed中建立sabi存储
+        #     if not 'sabi' in bed:
+        #         bed['sabi'] = {}
+        #     now = datetime.datetime.today()
+        #     add = datetime.timedelta(hours=0)
+        #     now -= add
+        #     # 如果换日，则清空
+        #     if not now.date() in bed['sabi']:
+        #         bed['sabi'] = {}
+        #         bed['sabi'][now.date()] = {}
+        #     n1 = member
+        #     if not group.id in bed['sabi'][now.date()]:
+        #         n1 = random.choice(await app.get_member_list(group))
+        #         bed['sabi'][now.date()][group.id] = n1.id
+        #     else:
+        #         n1 = await app.get_member(group, bed['sabi'][now.date()][group.id])
+        #     await app.send_group_message(group, MessageChain([
+        #         Plain("今天你群的sabi是：\n"),
+        #         Img(data_bytes=await n1.get_avatar(140)),
+        #         Plain(f"\n{n1.name}（{n1.id}）")
+        #     ]))
 
         # 明日方舟模块
         if msg.startswith('搜索作战 '):
@@ -854,7 +950,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                         message=MessageChain(sstr),
                     )
                 )
-            fwd_nodeList[0].messageChain.extend(f"\n保底{m}星干员")
+            fwd_nodeList[0].message_chain.extend(f"\n保底{m}星干员")
             message = MessageChain(Forward(nodeList=fwd_nodeList))
             await app.send_group_message(group, message)
 
@@ -999,7 +1095,7 @@ async def bot_kicked_hanler(app: Ariadne, event: BotLeaveEventKick):
 
 @bcc.receiver(ApplicationLaunched)
 async def repeattt(app: Ariadne):
-    
+
     Localpath = './data/cookies.json'
     with open(Localpath, 'r', encoding='utf8')as fp:
         cookies = json.load(fp)

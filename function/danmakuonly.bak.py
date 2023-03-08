@@ -8,6 +8,7 @@ import zlib
 
 import aiohttp
 import requests
+import speech
 
 remote = 'wss://tx-bj-live-comet-01.chat.bilibili.com/sub'
 
@@ -51,7 +52,7 @@ async def entrence(room_id):
     '''弹幕服务器接入口'''
     await startup(room_id)
     num = 0
-    while(True):
+    while (True):
         num += 1
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
@@ -99,7 +100,7 @@ def printDM(data, room_id):
     # 如果传入的data为null则直接返回
     if not data:
         return
-    
+
     # 获取数据包的长度，版本和操作类型
     packetLen = int(data[:4].hex(), 16)
     ver = int(data[6:8].hex(), 16)
@@ -107,46 +108,49 @@ def printDM(data, room_id):
 
     # 有的时候可能会两个数据包连在一起发过来，所以利用前面的数据包长度判断，
 
-    if(len(data) > packetLen):
+    if (len(data) > packetLen):
         printDM(data[packetLen:], room_id)
         data = data[:packetLen]
 
     # 有时会发送过来 zlib 压缩的数据包，这个时候要去解压。
-    if(ver == 2):
+    if (ver == 2):
         data = zlib.decompress(data[16:])
         printDM(data, room_id)
         return
 
     # ver 为1的时候为进入房间后或心跳包服务器的回应。op 为3的时候为房间的人气值。
-    if(ver == 1):
-        if(op == 3):
+    if (ver == 1):
+        if (op == 3):
             t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
             t = t[:len(t) - 3] + ']'
             print('%s[POPULARITY]: %s: %d' %
                   (t, room_id, int(data[16:].hex(), 16)))
         return
-    
+
     # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
     # op 为5意味着这是通知消息，cmd 基本就那几个了。
-    if(op == 5):
+    if (op == 5):
         jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
         print(jd)
         sstr = ''
-        if(jd['cmd'] == 'DANMU_MSG'):
+        if (jd['cmd'] == 'DANMU_MSG'):
             sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]
-        elif(jd['cmd'] == 'LIVE'):
+            speech.say(f"{jd['info'][2][1]}说，{jd['info'][1]}")
+        elif (jd['cmd'] == 'LIVE'):
             sstr = '[Notice] LIVE Start!'
-        elif(jd['cmd'] == 'PREPARING'):
+            speech.say("直播已开始")
+        elif (jd['cmd'] == 'PREPARING'):
             sstr = '[Notice] LIVE Ended!'
-        elif(jd['cmd'] == 'SEND_GIFT'):
+            speech.say("直播已结束")
+        elif (jd['cmd'] == 'SEND_GIFT'):
             sstr = '[GIFT]' + jd['data']['uname'] + ' ' + jd['data']['action'] + \
                 ' ' + str(jd['data']['num']) + 'x' + jd['data']['giftName']
-        elif(jd['cmd'] == "INTERACT_WORD"):
+        elif (jd['cmd'] == "INTERACT_WORD"):
             if jd['data']['msg_type'] == 1:
                 sstr = '[ENTRY] ' + jd['data']['uname'] + ' 进入直播间'
             elif jd['data']['msg_type'] == 2:
                 sstr = '[FOLLOW] ' + jd['data']['uname'] + ' 关注了直播间'
-        elif(jd['cmd'] == "未知"):
+        elif (jd['cmd'] == "未知"):
             print(jd)
             sstr = '[SHARE] ' + jd['data']['uname'] + ' 分享了直播间'
         else:

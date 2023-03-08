@@ -7,7 +7,8 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Forward, ForwardNode, Image, Plain
 
 from function.bilibili_private import draw_messages
-from function.data import cookie, dancing_cookie, token
+from function.data import (cookie, dancing_cookie, gravity_bili_jct,
+                           gravity_cookie, token)
 
 table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
 tr = {}
@@ -50,7 +51,7 @@ async def get(app, group):
         await app.sendFriendMessage(349468958, MessageChain([Plain(code)]))
         await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
     else:
-        await app.send_group_message(group, MessageChain([Plain("直播间开启失败，可能是cookie过期")]))
+        await app.send_group_message(group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")]))
 
 
 async def end(app, group):
@@ -68,6 +69,9 @@ async def change(app, group, msg: str):
     if (len(text) < 2):
         return
     title = text[1]
+    if len(title) > 20:
+        await app.send_group_message(group, MessageChain([Plain("标题过长，请更改")]))
+        return
     for i in range(2, len(text)):
         title = title + ' ' + text[i]
 
@@ -77,9 +81,9 @@ async def change(app, group, msg: str):
             "csrf": token, "title": title}
     r = requests.post(url, data, headers=headers)
     if (r.json()["msg"] == "ok"):
-        await app.send_group_message(group, MessageChain([Plain("直播间标题已更改为：\n" + title)]))
+        await app.send_group_message(group, MessageChain([Plain(f"直播间标题已更改为：\n{title}")]))
     else:
-        await app.send_group_message(group, MessageChain([Plain("直播间标题更改失败，可能是cookie过期")]))
+        await app.send_group_message(group, MessageChain([Plain(f"直播间标题更改失败，原因：\n{r.json()['message']}")]))
 
 
 async def triple(app, group, msg: str):
@@ -272,3 +276,49 @@ async def bilibili(app, group, msg: str):
         await triple(app, group, msg)
 
 # private_msg()
+
+
+async def get_gravity(app, group, member):
+    url = "https://api.live.bilibili.com/room/v1/Room/startLive"
+    headers = {"cookie": gravity_cookie}
+    data = {"room_id": "1925638", "csrf_token": gravity_bili_jct,
+            "csrf": gravity_bili_jct, "area_v2": "255", "platform": "pc"}  # 255代表明日方舟分区
+    r = requests.post(url, data, headers=headers)
+    addr = r.json()["data"]["rtmp"]["addr"]
+    code = r.json()["data"]["rtmp"]["code"]
+    if (r.json()["data"]["status"] == "LIVE"):
+        await app.sendFriendMessage(member, MessageChain([Plain(addr)]))
+        await app.sendFriendMessage(member, MessageChain([Plain(code)]))
+        await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
+    else:
+        await app.send_group_message(group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")]))
+
+
+async def end_gravity(app, group):
+    url = "https://api.live.bilibili.com/room/v1/Room/stopLive"
+    headers = {"cookie": gravity_cookie}
+    data = {"room_id": "1925638", "csrf_token": gravity_bili_jct,
+            "csrf": gravity_bili_jct, "platform": "pc"}
+    r = requests.post(url, data, headers=headers)
+    if (r.json()["data"]["status"] == "PREPARING"):
+        await app.send_group_message(group, MessageChain([Plain("直播间关闭成功")]))
+
+
+async def change_gravity(app, group, msg: str):
+    text = msg.split(' ', 1)
+    if (len(text) < 2):
+        return
+    title = text[1]
+    if len(title) > 20:
+        await app.send_group_message(group, MessageChain([Plain("标题过长，请更改")]))
+        return
+    url = "https://api.live.bilibili.com/room/v1/Room/update"
+    headers = {"cookie": gravity_cookie}
+    data = {"room_id": "1925638", "csrf_token": gravity_bili_jct,
+            "csrf": gravity_bili_jct, "title": title}
+    r = requests.post(url, data, headers=headers)
+    print(r.json())
+    if (r.json()["msg"] == "ok"):
+        await app.send_group_message(group, MessageChain([Plain(f"直播间标题已更改为：\n{title}")]))
+    else:
+        await app.send_group_message(group, MessageChain([Plain(f"直播间标题更改失败，原因：\n{r.json()['message']}")]))

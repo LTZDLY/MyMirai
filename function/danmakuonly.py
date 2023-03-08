@@ -8,6 +8,7 @@ import json
 import zlib
 
 import requests
+# import speech
 from aiowebsocket.converses import AioWebSocket
 
 remote = 'wss://broadcastlv.chat.bilibili.com:2245/sub'
@@ -65,7 +66,7 @@ async def sendHeartBeat(websocket, room_id):
         await websocket.send(bytes.fromhex(hb))
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
-        print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
+        # print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
 
 
 async def receDM(websocket):
@@ -100,7 +101,8 @@ def printDM(data):
     # ver 为1的时候为进入房间后或心跳包服务器的回应。op 为3的时候为房间的人气值。
     if(ver == 1):
         if(op == 3):
-            print('[RENQI]  {}'.format(int(data[16:].hex(), 16)))
+            # print('[RENQI]  {}'.format(int(data[16:].hex(), 16)))
+            pass
         return
 
     # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
@@ -110,24 +112,31 @@ def printDM(data):
         # print(jd)
         sstr = ''
         if(jd['cmd'] == 'DANMU_MSG'):
-            sstr = '[DANMU] ' + jd['info'][2][1] + ': ' + jd['info'][1]
+            sstr = f"[DANMU]{jd['info'][2][1]}: {jd['info'][1]}"
+            # speech.say(f"{jd['info'][2][1]}说，{jd['info'][1]}")
         elif(jd['cmd'] == 'LIVE'):
             sstr = '[Notice] LIVE Start!'
+            # speech.say("直播已开始")
         elif(jd['cmd'] == 'PREPARING'):
             sstr = '[Notice] LIVE Ended!'
+            # speech.say("直播已结束")
         elif(jd['cmd'] == 'SEND_GIFT'):
             sstr = '[GIFT]' + jd['data']['uname'] + ' ' + jd['data']['action'] + \
                 ' ' + str(jd['data']['num']) + 'x' + jd['data']['giftName']
+            # speech.say(f"感谢{jd['data']['uname']}赠送的{jd['data']['num']}个{jd['data']['giftName']}")
         elif(jd['cmd'] == "INTERACT_WORD"):
             if jd['data']['msg_type'] == 1:
-                sstr = '[ENTRY] ' + jd['data']['uname'] + ' 进入直播间'
+                # print(jd['data'])
+                sstr = f"[ENTRY] {jd['data']['uname']}({jd['data']['uid']}) 进入直播间"
+                # speech.say(f"欢迎{jd['data']['uname']}进入直播间")
             elif jd['data']['msg_type'] == 2:
                 sstr = '[FOLLOW] ' + jd['data']['uname'] + ' 关注了直播间'
         elif(jd['cmd'] == "未知"):
             print(jd)
             sstr = '[SHARE] ' + jd['data']['uname'] + ' 分享了直播间'
         else:
-            sstr = '[OTHER] ' + jd['cmd']
+            # sstr = '[OTHER] ' + jd['cmd']
+            pass
 
         if sstr != '':
             print(sstr)
@@ -136,3 +145,4 @@ def printDM(data):
 if __name__ == '__main__':
     roomid = int(input('请输入房间号'))
     asyncio.get_event_loop().run_until_complete(startup(roomid))
+
