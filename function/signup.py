@@ -15,7 +15,7 @@ def signup(id: int) -> str:
     date = (read_from_ini('data\\签到.ini', str(id), 'date', '1970-01-01'))
     date = datetime.datetime.fromisoformat(date)
     now = datetime.datetime.today()
-    add = datetime.timedelta(hours=7)
+    add = datetime.timedelta(hours=0)
 
     now -= add
     delta = now - date

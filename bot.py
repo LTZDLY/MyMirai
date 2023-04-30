@@ -491,7 +491,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                         live[room_id] = asyncio.create_task(
                             entrence(app, room_id))
                     info = get_info(room_id)
-                    await app.send_group_message(group, MessageChain([Plain("开启对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
+                    await app.send_group_message(group, MessageChain([Plain("开启对%s(%d)的直播间订阅" % (info['uname'], info['uid']))]))
                     livewrite(group.id, int(room_id))
                 except:
                     await app.send_group_message(group, MessageChain([Plain("开启直播视奸失败，请检查房间号")]))
@@ -521,9 +521,26 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                             fw.close()
                         pass
                         info = get_info(room_id)
-                        await app.send_group_message(group, MessageChain([Plain("关闭对%s(%d)的直播间订阅" % (info['user'], info['uid']))]))
+                        await app.send_group_message(group, MessageChain([Plain("关闭对%s(%d)的直播间订阅" % (info['uname'], info['uid']))]))
                         break
 
+        if msg.startswith('查询直播间 '):
+            room_id = msg.replace("查询直播间 ", '')
+            info = get_info(room_id)
+            if not 'msg' in info:
+                sstr = f'用户名：{info["uname"]}({info["uid"]})\n直播间标题：{info["title"]}\n' + \
+                    f'直播分区：{info["parent_area_name"]} - {info["area_name"]}\n' + \
+                    f'直播间地址：https://live.bilibili.com/{info["room_id"]}\n' + \
+                    f'直播间状态：{"直播中" if info["live_status"] else "未开播"}\n直播关键帧：'
+                await app.send_group_message(group, MessageChain([
+                    Plain(sstr),
+                    Image(url=info['keyframe'])
+                ]))
+            else:
+                await app.send_group_message(group, MessageChain([
+                    Plain(info['msg'])
+                ]))
+            pass
         # canvas任务爬取模块
         global sess
         if msg.startswith('canvas.'):
@@ -670,15 +687,18 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             while s.find('  ') != -1:
                 s = s.replace('  ', ' ')
             s = s.replace("choice ", '', 1)
-            msg = choice(s)
-            await app.send_group_message(group, MessageChain.from_persistent_string(msg))
+            s_msg = choice(s)
+            await app.send_group_message(group, MessageChain.from_persistent_string(s_msg))
         if msg.startswith("选择 "):
             s = msgs
-            while s.find('  ') != -1:
-                s = s.replace('  ', ' ')
-            s = s.replace("选择 ", '', 1)
-            msg = choice(s)
-            await app.send_group_message(group, MessageChain.from_persistent_string(msg))
+            if random.randrange(0, 100) == random.randrange(0, 100):
+                await app.send_group_message(group, MessageChain([Plain("不选")]))
+            else:
+                while s.find('  ') != -1:
+                    s = s.replace('  ', ' ')
+                s = s.replace("选择 ", '', 1)
+                s_msg = choice(s)
+                await app.send_group_message(group, MessageChain.from_persistent_string(s_msg))
         if msg.startswith("选择"):  # 多次选择
             s = msgs
             while s.find('  ') != -1:
@@ -815,7 +835,6 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 bed['wife'][now.date()] = {}
             if not group.id in bed['wife'][now.date()]:
                 bed['wife'][now.date()][group.id] = {}
-
             n1 = member
             if not member.id in bed['wife'][now.date()][group.id]:
                 ms = await app.get_member_list(group)
@@ -825,8 +844,12 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                     bed['wife'][now.date()][group.id][n1.id] = member.id
                     bed['wife'][now.date()][group.id][member.id] = n1.id
                 else:
+                    n1 = await app.get_friend(app.account)
                     await app.send_group_message(group.id, MessageChain([
-                        At(member), Plain(" 群里没人能当你老婆了噜~")
+                        At(member), Plain(
+                            " 群里没人能当你老婆了，那切噜就勉为其难的当你一天老婆吧！\n你今天的老婆是：\n"),
+                        Img(data_bytes=await n1.get_avatar(140)),
+                        Plain(f"\n{n1.nickname}（{n1.id}）")
                     ]))
                     return
             else:

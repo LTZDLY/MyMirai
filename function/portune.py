@@ -13,10 +13,10 @@ from hoshino.typing import *
 '''
 from function.luck_desc import luck_desc
 from function.luck_type import luck_type
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image as Img, ImageDraw, ImageFont
 
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At, Image as Img, Plain
+from graia.ariadne.message.element import At, Image, Plain
 
 sv_help = '''
 [抽签|人品|运势|抽凯露签]
@@ -46,7 +46,7 @@ async def portune(app, group: int, member: int, var, model=''):
     await bot.send(ev, pic, at_sender=True)
     '''
 
-    t = datetime.datetime.now() - datetime.timedelta(hours=4)
+    t = datetime.datetime.now() - datetime.timedelta(hours=0)
     if var[0].date() != t.date():
         # var是一个记录抽到的签的三元组，其中第一项为日期，第二项为图片，第三项为文字
         print("他今天还没抽过运势")
@@ -60,7 +60,7 @@ async def portune(app, group: int, member: int, var, model=''):
     img = drawing_pic(var, model)
     img.save("./source/bak1.png")
     m = MessageChain(
-        [At(member), p, Img(path="./source/bak1.png")])
+        [At(member), p, Image(path="./source/bak1.png")])
     m.__root__[0].display = ''
     await app.send_group_message(group, m)
 
@@ -80,7 +80,7 @@ async def portune_kyaru(bot, ev):
 '''
 
 
-def drawing_pic(var=None, model='') -> Image:
+def drawing_pic(var=None, model='') -> Img:
     if not var:
         print("他今天还没抽过运势")
         base_img = ''
@@ -103,7 +103,7 @@ def drawing_pic(var=None, model='') -> Image:
     charaid = filename.lstrip('frame_')
     charaid = charaid.rstrip('.jpg')
 
-    img = Image.open(base_img)
+    img = Img.open(base_img)
     # Draw title
     draw = ImageDraw.Draw(img)
 

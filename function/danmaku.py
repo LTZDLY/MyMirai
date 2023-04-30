@@ -55,7 +55,7 @@ async def entrence(app, room_id):
     '''弹幕服务器接入口'''
     await startup(app, room_id)
     num = 0
-    while(True):
+    while (True):
         num += 1
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
@@ -114,19 +114,19 @@ async def printDM(app, data, room_id):
 
     # 有的时候可能会两个数据包连在一起发过来，所以利用前面的数据包长度判断，
 
-    if(len(data) > packetLen):
+    if (len(data) > packetLen):
         await printDM(app, data[packetLen:], room_id)
         data = data[:packetLen]
 
     # 有时会发送过来 zlib 压缩的数据包，这个时候要去解压。
-    if(ver == 2):
+    if (ver == 2):
         data = zlib.decompress(data[16:])
         await printDM(app, data, room_id)
         return
 
     # ver 为1的时候为进入房间后或心跳包服务器的回应。op 为3的时候为房间的人气值。
-    if(ver == 1):
-        if(op == 3):
+    if (ver == 1):
+        if (op == 3):
             t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
             t = t[:len(t) - 3] + ']'
             # print('%s[POPULARITY]: %s: %d' % (t, room_id, int(data[16:].hex(), 16)))
@@ -134,7 +134,7 @@ async def printDM(app, data, room_id):
 
     # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
     # op 为5意味着这是通知消息，cmd 基本就那几个了。
-    if(op == 5):
+    if (op == 5):
         jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
         sstr = ''
         '''
@@ -162,7 +162,7 @@ async def printDM(app, data, room_id):
             await app.send_group_message(group, MessageChain([Plain(sstr)]))
         '''
 
-        if(jd['cmd'] != 'LIVE'):
+        if (jd['cmd'] != 'LIVE'):
             return
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
@@ -177,8 +177,7 @@ async def printDM(app, data, room_id):
             if (room_id != str(i['room_id'])):
                 continue
             for j in i['group']:
-                sstr = '%s的直播开始啦！\n直播间标题：%s\n直播关键帧：' % (
-                    info['user'], info['title'])
+                sstr = f'{info["uname"]}的直播开始啦！\n直播间标题：{info["title"]}\n直播关键帧：'
                 await app.send_group_message(j, MessageChain([
                     Plain(sstr),
                     Image(url=info['keyframe']),
@@ -192,22 +191,27 @@ def get_info(room_id: str):
     '''获取b站用户个人信息'''
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
     headers = {'user-Agent': user_agent}
-    
+
     url = 'https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=%s' % room_id
-    
+
     data_raw = requests.get(url, headers=headers).json()
 
-    uid = data_raw['data']['room_info']['uid']
-    room_id = data_raw['data']['room_info']['room_id']
-    title = data_raw['data']['room_info']['title']
-    keyframe = data_raw['data']['room_info']['keyframe']
-    uname = data_raw['data']['anchor_info']['base_info']['uname']
+    # uid = data_raw['data']['room_info']['uid']
+    # room_id = data_raw['data']['room_info']['room_id']
+    # title = data_raw['data']['room_info']['title']
+    # keyframe = data_raw['data']['room_info']['keyframe']
+    # uname = data_raw['data']['anchor_info']['base_info']['uname']
 
-    data = {'title': title,
-            'user': uname,
-            'uid': uid,
-            'room_id': room_id,
-            'keyframe': keyframe}
+    # data = {'title': title,
+    #         'user': uname,
+    #         'uid': uid,
+    #         'room_id': room_id,
+    #         'keyframe': keyframe}
+    if data_raw['code'] == 0:
+        data = data_raw['data']['room_info']
+        data['uname'] = data_raw['data']['anchor_info']['base_info']['uname']
+    else:
+        data = {'msg': '没有这个直播间'}
     return data
 
 

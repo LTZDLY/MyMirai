@@ -38,16 +38,16 @@ async def repeat(app):
         if h == 7:
             asyncio.create_task(sign(app, 372733015))
             asyncio.create_task(readexcel(app, 958056260))
-            sss = '切噜~！早上好！已经七点了！该起床并完成每日打卡咯！'
+            sss = '切噜~！早上好！已经七点了！该起床咯！'
         elif h == 12:
             sss = '切噜~！中午好！12点到啦吃午饭了吗！'
         elif h == 13:
-            sss = '一点一点！现在是中午一点切噜~！今天的每日打卡记得做了吗？'
+            sss = '一点一点！现在是中午一点切噜~！'
         elif h == 18:
             sss = '切噜~！18点啦！记得吃晚饭哦！'
         elif h == 23:
             asyncio.create_task(sign(app, 372733015))
-            sss = '切噜~！23点啦！到睡觉的时候啦！记得最后再检查一次有没有完成打卡！晚安安！'
+            sss = '切噜~！23点啦！到睡觉的时候啦！晚安安！'
 
     if sss != '':
         for i in group:
