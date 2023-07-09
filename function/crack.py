@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import requests
 from Crypto.Cipher import AES
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image as Img, ImageDraw, ImageFont
 
 
 def getData(s: requests.Session):
@@ -138,7 +138,7 @@ def extractChar(img, contour):
 
 
 def genCharacter(ch, size):
-    img = Image.new("L", size, 0)
+    img = Img.new("L", size, 0)
     font = ImageFont.truetype("simsun.ttc", min(size))
     draw = ImageDraw.Draw(img)
     draw.text((0, 0), ch, font=font, fill=255)

@@ -5,6 +5,7 @@ import os
 import random
 import re
 import traceback
+# from collections import deque
 from typing import Union
 
 import requests
@@ -100,6 +101,24 @@ def check_group():
             raise ExecutionStop
     return Depend(check_group_deco)
 
+
+# fre = deque()
+
+# def check_frequent(size: int):
+#     async def check_frequent_deco(app: Ariadne):
+#         print(fre)
+#         if len(fre) != 0:
+#             first_element = fre[0]
+#             now = time.time()
+#             if now - first_element < 10:
+#                 raise ExecutionStop
+#         elif len(fre) >= size:
+#             first_element = fre[0]
+#             last_element = fre[-1]
+#             if last_element - first_element < 60:
+#                 raise ExecutionStop
+#             fre.popleft()
+#     return Depend(check_frequent_deco)
 
 def nothost(*members: int):
     async def check_host(app: Ariadne, member: Union[Member, Friend]):
@@ -528,10 +547,18 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             room_id = msg.replace("查询直播间 ", '')
             info = get_info(room_id)
             if not 'msg' in info:
+                if info["live_status"] == 0:
+                    status = "未开播"
+                elif info["live_status"] == 1:
+                    status = "直播中"
+                elif info["live_status"] == 2:
+                    status = "轮播中"
                 sstr = f'用户名：{info["uname"]}({info["uid"]})\n直播间标题：{info["title"]}\n' + \
                     f'直播分区：{info["parent_area_name"]} - {info["area_name"]}\n' + \
                     f'直播间地址：https://live.bilibili.com/{info["room_id"]}\n' + \
-                    f'直播间状态：{"直播中" if info["live_status"] else "未开播"}\n直播关键帧：'
+                    f'''直播间短号：{f"https://live.bilibili.com/{info['short_id']}" if info['short_id'] else "无"}\n''' + \
+                    f'直播间状态：{status}\n直播关键帧：'
+                fre.append(time.time())
                 await app.send_group_message(group, MessageChain([
                     Plain(sstr),
                     Image(url=info['keyframe'])
@@ -848,7 +875,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                     await app.send_group_message(group.id, MessageChain([
                         At(member), Plain(
                             " 群里没人能当你老婆了，那切噜就勉为其难的当你一天老婆吧！\n你今天的老婆是：\n"),
-                        Img(data_bytes=await n1.get_avatar(140)),
+                        Image(data_bytes=await n1.get_avatar(140)),
                         Plain(f"\n{n1.nickname}（{n1.id}）")
                     ]))
                     return
@@ -857,7 +884,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 n1 = await app.get_member(group, n1)
             await app.send_group_message(group, MessageChain([
                 At(member), Plain(" 你今天的老婆是：\n"),
-                Img(data_bytes=await n1.get_avatar(140)),
+                Image(data_bytes=await n1.get_avatar(140)),
                 Plain(f"\n{n1.name}（{n1.id}）")
             ]))
 
@@ -881,7 +908,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 n1 = await app.get_member(group, bed['allwife'][now.date()][group.id])
             await app.send_group_message(group, MessageChain([
                 Plain("今天你群的老婆是：\n"),
-                Img(data_bytes=await n1.get_avatar(140)),
+                Image(data_bytes=await n1.get_avatar(140)),
                 Plain(f"\n{n1.name}（{n1.id}）")
             ]))
 
@@ -904,7 +931,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
         #         n1 = await app.get_member(group, bed['sabi'][now.date()][group.id])
         #     await app.send_group_message(group, MessageChain([
         #         Plain("今天你群的sabi是：\n"),
-        #         Img(data_bytes=await n1.get_avatar(140)),
+        #         Image(data_bytes=await n1.get_avatar(140)),
         #         Plain(f"\n{n1.name}（{n1.id}）")
         #     ]))
 
@@ -1059,7 +1086,7 @@ async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
         await app.send_group_message(group, MessageChain([Plain(ss)]))
     except Exception as e:
         traceback.print_exc()
-        await app.send_group_message(group, MessageChain([Plain(traceback.format_exc())]))
+        await app.send_group_message(group, MessageChain([Plain("服务器开小差了，请稍后再试哦~")]))
 
 
 @bcc.receiver(MemberMuteEvent)
@@ -1129,6 +1156,7 @@ async def repeattt(app: Ariadne):
 
     # TODO 实装整点报时之类的功能
     asyncio.create_task(clock(app))
+    # asyncio.create_task(clock_test(app))
 
     global live
     Localpath = './data/live.json'

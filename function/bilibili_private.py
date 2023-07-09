@@ -2,7 +2,7 @@ import os
 from io import BytesIO
 
 import requests
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image as Img, ImageDraw, ImageFont
 
 fontsize = 70
 timesize = 50
@@ -18,18 +18,18 @@ def circle(img_path):
     yzmdata = requests.get(img_path)
     tempIm = BytesIO(yzmdata.content)
 
-    ima = Image.open(tempIm).convert("RGBA")
+    ima = Img.open(tempIm).convert("RGBA")
     size = ima.size
-    # ima=ima.resize((size[0] * 2, size[1] * 2), Image.ANTIALIAS)
+    # ima=ima.resize((size[0] * 2, size[1] * 2), Img.ANTIALIAS)
     size = ima.size
     print(size)
     # 因为是要圆形，所以需要正方形的图片
     r2 = min(size[0], size[1])
     if size[0] != size[1]:
-        ima = ima.resize((r2, r2), Image.ANTIALIAS)
+        ima = ima.resize((r2, r2), Img.ANTIALIAS)
     # 最后生成圆的半径
     r3 = int(r2/2)
-    imb = Image.new('RGBA', (r3*2, r3*2), (255, 255, 255, 0))
+    imb = Img.new('RGBA', (r3*2, r3*2), (255, 255, 255, 0))
     pima = ima.load()  # 像素的访问对象
     pimb = imb.load()
     r = float(r2/2)  # 圆心横坐标
@@ -42,14 +42,14 @@ def circle(img_path):
             if l < r3:
                 pimb[i-(r-r3), j-(r-r3)] = pima[i, j]
 
-    # imb=imb.resize((size[0] // 2, size[1] // 2), Image.ANTIALIAS)
+    # imb=imb.resize((size[0] // 2, size[1] // 2), Img.ANTIALIAS)
     # imb.save('E:/Mirai/Graia/cir_img.png')
     return imb
 
 
 def get_font_render_size(text, size):
     # 获取字体大小
-    canvas = Image.new('RGB', (20480, 2048))
+    canvas = Img.new('RGB', (20480, 2048))
     draw = ImageDraw.Draw(canvas)
     monospace = ImageFont.truetype(myfont, size)
     draw.text((0, 0), text, font=monospace, fill=(255, 255, 255))
@@ -62,20 +62,20 @@ def get_font_render_size(text, size):
 
 def draw_dialog(text):
     # 绘制对话框
-    lb = Image.open('./source/leftbottom.png').convert("RGBA")
-    rt = lb.transpose(Image.ROTATE_180)
-    rb = lb.transpose(Image.FLIP_LEFT_RIGHT)
+    lb = Img.open('./source/leftbottom.png').convert("RGBA")
+    rt = lb.transpose(Img.ROTATE_180)
+    rb = lb.transpose(Img.FLIP_LEFT_RIGHT)
 
     s = get_font_render_size(text, fontsize)
     x = s[0] + 120 + 5
     y = s[1] + 90
 
-    canvas = Image.new('RGB', (s[0] + 20, s[1] + 10), (255, 255, 255))
+    canvas = Img.new('RGB', (s[0] + 20, s[1] + 10), (255, 255, 255))
     draw = ImageDraw.Draw(canvas)
     monospace = ImageFont.truetype(myfont, fontsize)
     draw.text((0, 0), text, font=monospace, fill=(0, 0, 0))
 
-    img = Image.new('RGBA', (x, y), (255, 255, 255, 255))
+    img = Img.new('RGBA', (x, y), (255, 255, 255, 255))
     # print(canvas.size)
 
     img.paste(lb, (0, y - 60))
@@ -92,12 +92,12 @@ def draw_message(text, face):
     img_txt = draw_dialog(text)
     img_head = face
     size_txt = img_txt.size
-    img_head = img_head.resize((150, 150), Image.ANTIALIAS)
+    img_head = img_head.resize((150, 150), Img.ANTIALIAS)
 
     _, _, _, a1 = img_head.split()
     _, _, _, a2 = img_txt.split()
 
-    img = Image.new(
+    img = Img.new(
         "RGBA", (size_txt[0] + 240, size_txt[1] + 60), (244, 245, 247, 255))
 
     img.paste(img_head, box=(30, 30), mask=a1)
@@ -111,16 +111,16 @@ def draw_img(content, face):
     yzmdata = requests.get(content['url'])
     tempIm = BytesIO(yzmdata.content)
 
-    img_txt = Image.open(tempIm).convert("RGBA")
+    img_txt = Img.open(tempIm).convert("RGBA")
     
     img_head = face
     size_txt = img_txt.size
-    img_head = img_head.resize((150, 150), Image.ANTIALIAS)
+    img_head = img_head.resize((150, 150), Img.ANTIALIAS)
 
     _, _, _, a1 = img_head.split()
     _, _, _, a2 = img_txt.split()
 
-    img = Image.new(
+    img = Img.new(
         "RGBA", (size_txt[0] + 240, size_txt[1] + 60), (244, 245, 247, 255))
 
     img.paste(img_head, box=(30, 30), mask=a1)
@@ -150,7 +150,7 @@ def draw_messages(msg_list):
                 msgs_img.append(img_temp)
                 x = max(x, img_temp.size[0])
                 y += img_temp.size[1]
-        img = Image.new('RGBA', (x, y + 200 + 116 * len(msgs)),
+        img = Img.new('RGBA', (x, y + 200 + 116 * len(msgs)),
                         (244, 245, 247, 255))
         a = ImageDraw.ImageDraw(img)
         a.rectangle(((0, 0), (x, 150)), fill=(255, 255, 255),

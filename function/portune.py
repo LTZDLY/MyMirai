@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+from io import BytesIO
 import re
 import random
 import os
@@ -58,9 +59,9 @@ async def portune(app, group: int, member: int, var, model=''):
     if var[1] and var[2]:
         p = Plain('\n你今天已经抽过签了，这是你今天抽到的签，欢迎明天再来~\n')
     img = drawing_pic(var, model)
-    img.save("./source/bak1.png")
+    # img.save("./source/bak1.png")
     m = MessageChain(
-        [At(member), p, Image(path="./source/bak1.png")])
+        [At(member), p, Image(data_bytes=img.getvalue())])
     m.__root__[0].display = ''
     await app.send_group_message(group, m)
 
@@ -143,6 +144,9 @@ def drawing_pic(var=None, model='') -> Img:
 
     # img = pic2b64(img)
     # img = MessageSegment.image(img)
+    img_bytes = BytesIO()
+    img.save(img_bytes, format="PNG")
+    img.close()
     return img
 
 

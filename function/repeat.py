@@ -150,7 +150,7 @@ async def clock(app):
             if t.minute != 0:
                 print("产生分的时间误差，开始矫正", t)
                 break
-            asyncio.create_task(repeat(app))
+            # asyncio.create_task(repeat(app))
             Localpath = './data/cookies.json'
             with open(Localpath, 'r', encoding='utf8')as fp:
                 cookies = json.load(fp)
@@ -165,6 +165,24 @@ async def clock(app):
                 break
             await asyncio.sleep(3600)
             pass
+
+
+async def clock_test(app):
+    print("开抢！")
+    t1 = 0
+    while True:
+        import requests
+        r = requests.get("https://testflight.apple.com/join/rACTLjPL")        
+        if r.text.find("This beta is full.") == -1 and r.text.find("此 Beta 版本的测试员已满。") == -1:
+            await app.send_friend_message(349468958, MessageChain([Plain("not full\nhttps://testflight.apple.com/join/rACTLjPL")]))
+            print("not full")
+        else:
+            # print("full")
+            if t1 == 0:
+                await app.send_friend_message(349468958, MessageChain([Plain("full\nhttps://testflight.apple.com/join/rACTLjPL")]))
+                t1 = 1
+            pass
+        await asyncio.sleep(600)
 
 if __name__ == "__main__":
     a = range(5)

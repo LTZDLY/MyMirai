@@ -1,17 +1,18 @@
-from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+from PIL import Image as Img, ImageDraw, ImageFont
 
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image as Img
+from graia.ariadne.message.element import Image
 
 
 async def ouen(app, txt: str, group):
     add = "simhei.ttf"
-    img = Image.open('./source/4.png')
+    img = Img.open('./source/4.png')
     # 控制表情的叠加位置
     draw = ImageDraw.Draw(img)
 
     mask = img
-    s_background = Image.new(
+    s_background = Img.new(
         "RGBA", (650, 650), (255, 255, 255, 0))  # alpha通道设为0，保证透明度
     s_draw = ImageDraw.Draw(s_background)
 
@@ -58,11 +59,13 @@ async def ouen(app, txt: str, group):
     s_rotate = s_background.rotate(-5, expand=1)  # 图像会转动随机的角度
     mask.resize(s_rotate.size)
 
-    out1 = Image.composite(s_rotate, mask, s_rotate)  # 第一次复合生成的图片是旋转后去黑色背景图片
+    out1 = Img.composite(s_rotate, mask, s_rotate)  # 第一次复合生成的图片是旋转后去黑色背景图片
     mask = out1
     # out1.show()
-    out1.save("./source/bak.png")
+    img_bytes = BytesIO()
+    out1.save(img_bytes, format="PNG")
+    out1.close()
 
     await app.send_group_message(group, MessageChain([
-        Img(path="./source/bak.png")
+        Image(data_bytes=img_bytes.getvalue())
     ]))
