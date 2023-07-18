@@ -69,3 +69,4 @@ async def ouen(app, txt: str, group):
     await app.send_group_message(group, MessageChain([
         Image(data_bytes=img_bytes.getvalue())
     ]))
+    img_bytes.close()

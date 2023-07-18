@@ -81,7 +81,7 @@ async def portune_kyaru(bot, ev):
 '''
 
 
-def drawing_pic(var=None, model='') -> Img:
+def drawing_pic(var=None, model='') -> BytesIO:
     if not var:
         print("他今天还没抽过运势")
         base_img = ''
@@ -147,7 +147,7 @@ def drawing_pic(var=None, model='') -> Img:
     img_bytes = BytesIO()
     img.save(img_bytes, format="PNG")
     img.close()
-    return img
+    return img_bytes
 
 
 def get_base_by_name(filename) -> str:

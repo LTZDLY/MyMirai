@@ -18,7 +18,8 @@ from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import (FriendMessage, GroupMessage,
                                          TempMessage)
 from graia.ariadne.event.mirai import (BotLeaveEventKick, BotMuteEvent,
-                                       MemberMuteEvent, MemberUnmuteEvent)
+                                       MemberMuteEvent, MemberUnmuteEvent,
+                                       NewFriendRequestEvent, BotInvitedJoinGroupRequestEvent)
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import (At, Forward, ForwardNode, Image,
                                            Plain, Quote, Voice)
@@ -65,7 +66,7 @@ rep = {}
 
 app = Ariadne(
     connection=config(
-        1424912867,  # 你的机器人的 qq 号
+        948153351,  # 你的机器人的 qq 号
         "LLSShinoai",  # 填入你的 mirai-api-http 配置中的 verifyKey
         # 以下两行（不含注释）里的 host 参数的地址
         # 是你的 mirai-api-http 地址中的地址与端口
@@ -78,7 +79,7 @@ app = Ariadne(
 )
 
 # app = Ariadne(MiraiSession(host="http://localhost:8098",
-#                            verify_key="LLSShinoai", account=1424912867))
+#                            verify_key="LLSShinoai", account=948153351))
 bcc = app.broadcast
 inc = InterruptControl(bcc)
 
@@ -140,6 +141,32 @@ def check_permission(permission: int):
             raise ExecutionStop
     return Depend(check_permission_deco)
 
+@bcc.receiver(
+    BotInvitedJoinGroupRequestEvent,
+)
+async def new_group_invited_handler(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
+    try:
+        await event.accept()
+        if (event.supplicant != hostqq):
+            await app.send_friend_message(hostqq, MessageChain([
+                Plain(f'{event.nickname}({event.supplicant})邀请加入群聊{event.group_name}({event.source_group})，已自动通过。')]))
+    except Exception as e:
+        traceback.print_exc()
+        await app.send_friend_message(hostqq, MessageChain([Plain(traceback.format_exc())]))
+
+
+@bcc.receiver(
+    NewFriendRequestEvent,
+)
+async def new_friend_handler(app: Ariadne, event: NewFriendRequestEvent):
+    try:
+        await event.accept()
+        await app.send_friend_message(hostqq, MessageChain([
+            Plain(f'{event.nickname}({event.supplicant})申请好友，已自动通过。附加信息如下：\n{event.message}')]))
+    except Exception as e:
+        traceback.print_exc()
+        await app.send_friend_message(hostqq, MessageChain([Plain(traceback.format_exc())]))
+
 
 @bcc.receiver(
     FriendMessage,
@@ -181,10 +208,16 @@ async def callme_listener(app: Ariadne, message: MessageChain, friend: Friend):
 
 @bcc.receiver(
     GroupMessage,
-    decorators=[nothost(hostqq), Mention(hostqq)],
+    decorators=[nothost(hostqq)],
 )
 async def callme_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
     # 监听事件永远最优先
+    l = ['349468958', 'xljj', '筱蓝', '小蓝', '蓝蓝', '七曜', '魔法使', 'lsl', '蓝盛霖']
+    for i in l:
+        if i in message.as_persistent_string():
+            break
+    else:
+        return
     message_a = MessageChain([
         Plain("消息监听：\n%s(%d)在%s(%d)中可能提到了我：\n" % (member.name, member.id, group.name, group.id))])
     message_b = message.asSendable()
@@ -445,6 +478,9 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             if message.display.startswith("更改直播间标题"):
                 await change_gravity(app, group, message.display)
 
+        if member.id == hostqq or group.id == 617990957 or group.id == 769641176 and message.display.startswith("bilibili"):
+            await bilibili_group(app, group, message.display)
+
         if member.id == hostqq and message.display == '生日测试':
             await readexcel(app, 958056260)
 
@@ -558,7 +594,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                     f'直播间地址：https://live.bilibili.com/{info["room_id"]}\n' + \
                     f'''直播间短号：{f"https://live.bilibili.com/{info['short_id']}" if info['short_id'] else "无"}\n''' + \
                     f'直播间状态：{status}\n直播关键帧：'
-                fre.append(time.time())
+                # fre.append(time.time())
                 await app.send_group_message(group, MessageChain([
                     Plain(sstr),
                     Image(url=info['keyframe'])
@@ -639,8 +675,10 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 await app.send_group_message(group, m)
 
         if member.id == hostqq and msg == "packup":
+            date = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+            os.makedirs(f"./data/{date}/")
             try:
-                await packup(app, group.id)
+                await packup(app, group.id, date)
                 await app.send_group_message(group, MessageChain([Plain("备份群成员信息成功")]))
             except:
                 await app.send_group_message(group, MessageChain([Plain("备份群成员信息失败")]))
@@ -648,10 +686,12 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 await app.send_group_message(group, MessageChain([Plain(traceback.format_exc())]))
 
         if member.id == hostqq and msg == "packupall":
+            date = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+            os.makedirs(f"./data/{date}/")
             try:
                 list = await app.get_group_list()
                 for i in list:
-                    await packup(app, i.id)
+                    await packup(app, i.id, date)
                 await app.send_group_message(group, MessageChain([Plain("备份所有群成员信息成功")]))
             except:
                 await app.send_group_message(group, MessageChain([Plain("备份所有群成员信息失败")]))
@@ -667,7 +707,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
             await luogu_rand(app, group)
         if msg == "签到":
             await app.send_group_message(group, MessageChain([Plain(signup(member.id))]))
-        # print(await app.getMember(group, 1424912867))
+        # print(await app.getMember(group, 948153351))
         if permissionflag >= 1 and msg.startswith("mute"):
             mute_member(app, group, message)
 
@@ -1026,7 +1066,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 return
             flag = 0
             for at in message.get(At):
-                if at.target == 1424912867:
+                if at.target == 948153351:
                     at.target = member.id
                     flag = 1
             if flag == 0:

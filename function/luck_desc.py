@@ -795,7 +795,7 @@ luck_desc = [
             },
             {
                 "good-luck": -7,
-                "content": "忌氪金﹁这些钱拿来买3080不香吗﹂"
+                "content": "忌氪金﹁这些钱拿来买4090不香吗﹂"
             },
             {
                 "good-luck": -9,

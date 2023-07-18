@@ -1,3 +1,4 @@
+import json
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 
@@ -127,6 +128,62 @@ async def priv_find(app, message: MessageChain):
     await app.sendFriendMessage(hostqq, MessageChain([Plain(s)]))
 
 
+async def priv_set(app, message: MessageChain):
+    ss = message.display.split(' ', 3)
+    if (len(ss) < 4):
+        await app.sendFriendMessage(hostqq, MessageChain([Plain("set需要3个参数：set [群组] [键] [值]")]))
+        return
+    # 键可以的取值为 group代表私聊消息的群号，bili_jct和SESSDATA代表cookis，switch代表开启关闭
+    group = ss[1]
+    key = ss[2]
+    value = ss[3]
+
+    Localpath = './data/cookies.json'
+    with open(Localpath, 'r', encoding='utf8')as fp:
+        cookies = json.load(fp)
+
+    if not group in cookies:
+        # 群组不是之前保存过的任何群组，执行初始化群组函数。
+        await app.sendFriendMessage(hostqq, MessageChain([Plain("并没有保存这个群组，现在进行添加。")]))
+        # 初始化
+
+    if key.lower() == 'group':
+        key = 'group'
+        value = int(value)
+        cookies[group][key] = value
+    elif key.lower() == 'bili_jct':
+        key = 'bili_jct'
+        sd = cookies[group]['SESSDATA']
+        cookies[group][key] = value
+        cookies[group]['cookie'] = f'SESSDATA={sd}; bili_jct={value}'
+    elif key.lower() == 'sessdata':
+        key = 'SESSDATA'
+        bj = cookies[group]['bili_jct']
+        cookies[group][key] = value
+        cookies[group]['cookie'] = f'SESSDATA={value}; bili_jct={bj}'
+    elif key.lower() == 'switch':
+        value = int(value)
+        cookies['settings'][group] = value
+
+    with open(Localpath, "w") as fw:
+        jsObj = json.dumps(cookies)
+        fw.write(jsObj)
+        fw.close()
+    await app.sendFriendMessage(hostqq, MessageChain([Plain(f"更改群组{group}的{key}为{value}完成。")]))
+
+
+def bili_priv_init(group, cookies):
+    temp = {}
+    temp['name'] = group
+    temp['group'] = 0
+    temp['bili_jct'] = ''
+    temp['SESSDATA'] = ''
+    temp['cookie'] = ''
+    
+    cookies['settings'][group] = 0
+    cookies[group] = temp
+
+
 async def priv_handler(app, message: MessageChain):
     if (message.display == 'get'):
         await priv_get(app)
@@ -140,3 +197,5 @@ async def priv_handler(app, message: MessageChain):
         await priv_switch(app, message)
     if (message.display.startswith('find')):
         await priv_find(app, message)
+    if (message.display.startswith('set')):
+        await priv_set(app, message)

@@ -45,9 +45,9 @@ async def readexcel(app, group):
         s += '\n祝他们生日快乐！'
         await app.send_group_message(group, MessageChain([Plain(s)]))
 
-async def packup(app, group):
+async def packup(app, group, date):
     data = await app.get_member_list(group)
-    workbook = xlsxwriter.Workbook("./data/" + str(group) + ".xlsx")  # 创建工作簿
+    workbook = xlsxwriter.Workbook(f"./data/{date}/{str(group)}.xlsx")  # 创建工作簿
     xlsxwriter.Workbook()
     worksheet1 = workbook.add_worksheet("sheet1")  # 创建子表
     worksheet1.activate()  # 激活表

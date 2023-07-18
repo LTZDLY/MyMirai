@@ -7,8 +7,10 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Forward, ForwardNode, Image, Plain
 
 from function.bilibili_private import draw_messages
+from function.bilibili_qrlogin import bilibili_qrlogin
 from function.data import (cookie, dancing_cookie, gravity_bili_jct,
                            gravity_cookie, token)
+from function.private import bili_priv_init
 
 table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
 tr = {}
@@ -206,6 +208,8 @@ def bili_private_handler(app, msgs, tcookie):
         url = f'https://api.vc.bilibili.com/account/v1/user/cards?uids={i}'
         r = requests.get(url, headers=headers)
         if (r.json()["code"] == 0):
+            if not r.json()['data']:
+                continue
             data = r.json()['data'][0]
             temp['name'] = data['name']
             temp['face'] = data['face']
@@ -263,6 +267,79 @@ def bili_private_handler(app, msgs, tcookie):
     return message
 
 
+async def login(app, group, msg: str):
+    text = msg.split(' ', 1)
+    if (len(text) < 2):
+        await app.send_group_message(group, MessageChain([Plain("缺少参数")]))
+        return
+    part = text[1]
+
+    Localpath = './data/cookies.json'
+    with open(Localpath, 'r', encoding='utf8')as fp:
+        cookies = json.load(fp)
+
+    if not part in cookies['settings']:
+        await app.send_group_message(group, MessageChain([Plain("没有该部门的拉取任务记录，请使用 bilibili.createtask 创建新的拉取任务")]))
+        return
+    await app.send_group_message(group, MessageChain([Plain(f"您现在正在对{part}进行二维码登录，请使用已登录该账号的B站客户端扫描二维码完成登录")]))
+    
+    f, get_cookies = await bilibili_qrlogin(app, group)
+
+    # 保存cookie
+    if f:
+        bj = requests.utils.dict_from_cookiejar(get_cookies)["bili_jct"]
+        sd = requests.utils.dict_from_cookiejar(get_cookies)["SESSDATA"]
+
+        cookies[part]['bili_jct'] = bj
+        cookies[part]['SESSDATA'] = sd
+        cookies[part]['cookie'] = f'SESSDATA={sd}; bili_jct={bj}'
+
+        with open(Localpath, "w") as fw:
+            jsObj = json.dumps(cookies)
+            fw.write(jsObj)
+            fw.close()
+
+
+async def createtask(app, group, msg: str):
+    text = msg.split(' ', 1)
+    if (len(text) < 2):
+        await app.send_group_message(group, MessageChain([Plain("缺少参数")]))
+        return
+    part = text[1]
+
+    Localpath = './data/cookies.json'
+    with open(Localpath, 'r', encoding='utf8')as fp:
+        cookies = json.load(fp)
+
+    if not part in cookies['settings']:
+        await app.send_group_message(group, MessageChain([Plain(f"为{part}创建拉取任务，请使用已登录该账号的B站客户端扫描二维码完成登录")]))
+        cookies['settings'][part] = 1
+
+        f, get_cookies = await bilibili_qrlogin(app, group)
+
+        # 保存cookie
+        if f:
+            bj = requests.utils.dict_from_cookiejar(get_cookies)["bili_jct"]
+            sd = requests.utils.dict_from_cookiejar(get_cookies)["SESSDATA"]
+            
+            temp = {}
+            temp['name'] = part
+            temp['group'] = group.id
+            temp['bili_jct'] = bj
+            temp['SESSDATA'] = sd
+            temp['cookie'] = f'SESSDATA={sd}; bili_jct={bj}'
+
+            cookies[part] = temp
+
+            with open(Localpath, "w") as fw:
+                jsObj = json.dumps(cookies)
+                fw.write(jsObj)
+                fw.close()
+    
+        await private_msg_init(app, temp)
+        
+
+
 async def bilibili(app, group, msg: str):
     if (msg == "bilibili.signup"):
         await sign(app, group)
@@ -274,6 +351,13 @@ async def bilibili(app, group, msg: str):
         await change(app, group, msg)
     elif (msg.startswith("bilibili.triple")):
         await triple(app, group, msg)
+
+
+async def bilibili_group(app, group, msg: str):
+    if (msg.startswith("bilibili.login")):
+        await login(app, group, msg)
+    if (msg.startswith("bilibili.createtask")):
+        await createtask(app, group, msg)
 
 # private_msg()
 
