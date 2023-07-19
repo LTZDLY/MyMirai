@@ -1,4 +1,5 @@
 import json
+
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 
@@ -171,17 +172,6 @@ async def priv_set(app, message: MessageChain):
         fw.close()
     await app.sendFriendMessage(hostqq, MessageChain([Plain(f"更改群组{group}的{key}为{value}完成。")]))
 
-
-def bili_priv_init(group, cookies):
-    temp = {}
-    temp['name'] = group
-    temp['group'] = 0
-    temp['bili_jct'] = ''
-    temp['SESSDATA'] = ''
-    temp['cookie'] = ''
-    
-    cookies['settings'][group] = 0
-    cookies[group] = temp
 
 
 async def priv_handler(app, message: MessageChain):

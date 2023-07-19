@@ -1,6 +1,8 @@
 import datetime
 import json
+import os
 import time
+from functools import partial
 
 import requests
 from graia.ariadne.message.chain import MessageChain
@@ -10,7 +12,6 @@ from function.bilibili_private import draw_messages
 from function.bilibili_qrlogin import bilibili_qrlogin
 from function.data import (cookie, dancing_cookie, gravity_bili_jct,
                            gravity_cookie, token)
-from function.private import bili_priv_init
 
 table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
 tr = {}
@@ -112,12 +113,12 @@ async def triple(app, group, msg: str):
 
 async def private_msg_init(app, tcookie):
     Localpath = f"./data/bili_private_{tcookie['name']}.json"
-    import os
-    if os.path.exists(Localpath):
-        return
+    # import os
+    # if os.path.exists(Localpath):
+    #     return
 
-    # 检测到文件不存在，首先进行初始化
-    await app.send_group_message(tcookie['group'], MessageChain([Plain(f"检测到{tcookie['name']}文件不存在，首先进行初始化")]))
+    # # 检测到文件不存在，首先进行初始化
+    # await app.send_group_message(tcookie['group'], MessageChain([Plain(f"检测到{tcookie['name']}文件不存在，首先进行初始化")]))
 
     bili_private = {}
     headers = {"cookie": tcookie['cookie']}
@@ -145,8 +146,40 @@ async def private_msg_init(app, tcookie):
     await app.send_group_message(tcookie['group'], MessageChain([Plain(f"初始化结束，本次初始化共加载了{len(bili_private)}个人的通信信息。")]))
 
 
-def private_msg(app, tcookie):
+
+def bili_priv_init(group, cookies):
+    temp = {}
+    temp['name'] = group
+    temp['group'] = 0
+    temp['bili_jct'] = ''
+    temp['SESSDATA'] = ''
+    temp['cookie'] = ''
+    
+    cookies['settings'][group] = 0
+    cookies[group] = temp
+
+async def getprivate(app, part):
+    # part 此处代表部门名
+    Localpath = './data/cookies.json'
+    with open(Localpath, 'r', encoding='utf8')as fp:
+        cookies = json.load(fp)
+    data = cookies[part]
+    print(f'{part}正在进行消息拉取...')
+    msg = await private_msg(app, data)
+    if msg:
+        await app.send_group_message(data['group'], msg)
+    else:
+        print(f'{part}并没有拉取到东西')
+
+async def private_msg(app, tcookie):
     Localpath = f"./data/bili_private_{tcookie['name']}.json"
+    
+    if not os.path.exists(Localpath):
+        # 检测到文件不存在，首先进行初始化
+        await app.send_group_message(tcookie['group'], MessageChain([Plain(f"检测到{tcookie['name']}文件不存在，首先进行初始化")]))
+        await private_msg_init(app, tcookie)
+        return
+    
     with open(Localpath, 'r', encoding='utf8')as fp:
         bili_private = json.load(fp)
 
@@ -300,7 +333,7 @@ async def login(app, group, msg: str):
             fw.close()
 
 
-async def createtask(app, group, msg: str):
+async def createtask(app, mytasks, group, msg: str):
     text = msg.split(' ', 1)
     if (len(text) < 2):
         await app.send_group_message(group, MessageChain([Plain("缺少参数")]))
@@ -336,7 +369,9 @@ async def createtask(app, group, msg: str):
                 fw.write(jsObj)
                 fw.close()
     
-        await private_msg_init(app, temp)
+            # await private_msg_init(app, temp)
+            await getprivate(app, part)
+            mytasks[part] = partial(getprivate, app, part)
         
 
 
@@ -353,11 +388,11 @@ async def bilibili(app, group, msg: str):
         await triple(app, group, msg)
 
 
-async def bilibili_group(app, group, msg: str):
+async def bilibili_group(app, mytasks, group, msg: str):
     if (msg.startswith("bilibili.login")):
         await login(app, group, msg)
     if (msg.startswith("bilibili.createtask")):
-        await createtask(app, group, msg)
+        await createtask(app, mytasks, group, msg)
 
 # private_msg()
 

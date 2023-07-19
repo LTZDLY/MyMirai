@@ -5,6 +5,7 @@ import os
 import random
 import re
 import traceback
+from functools import partial
 # from collections import deque
 from typing import Union
 
@@ -17,9 +18,10 @@ from graia.ariadne.entry import Friend, Group, Member
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import (FriendMessage, GroupMessage,
                                          TempMessage)
-from graia.ariadne.event.mirai import (BotLeaveEventKick, BotMuteEvent,
+from graia.ariadne.event.mirai import (BotInvitedJoinGroupRequestEvent,
+                                       BotLeaveEventKick, BotMuteEvent,
                                        MemberMuteEvent, MemberUnmuteEvent,
-                                       NewFriendRequestEvent, BotInvitedJoinGroupRequestEvent)
+                                       NewFriendRequestEvent)
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import (At, Forward, ForwardNode, Image,
                                            Plain, Quote, Voice)
@@ -31,9 +33,9 @@ from graia.broadcast.builtin.decorators import Depend
 from graia.broadcast.exceptions import ExecutionStop
 from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
-from graia.saya import Channel, Saya
-from graia.saya.builtins.broadcast import BroadcastBehaviour
-from graia.saya.builtins.broadcast.schema import ListenerSchema
+# from graia.saya import Channel, Saya
+# from graia.saya.builtins.broadcast import BroadcastBehaviour
+# from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax import silkcoder
 
 from function.arknights import *
@@ -41,7 +43,6 @@ from function.bilibili import *
 from function.canvas import *
 from function.cherugo import *
 from function.danmaku import *
-from function.data import dancing_group
 from function.excel import *
 from function.image import *
 from function.ini import *
@@ -59,10 +60,11 @@ from function.switch import *
 from function.todotree import *
 from function.weather import *
 
-live = {}
-sess = {}
-bed = {}
-rep = {}
+live = {} # 存储直播间监听状态
+sess = {} # 存储canvas登录状态，我觉得可以废掉了
+bed = {} # 存储起床，每日运势老婆等信息
+rep = {} # 存储复读信息
+mytasks = {} # 存储需要整点运行的所有任务，主要是b站私信获取
 
 app = Ariadne(
     connection=config(
@@ -479,7 +481,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 await change_gravity(app, group, message.display)
 
         if member.id == hostqq or group.id == 617990957 or group.id == 769641176 and message.display.startswith("bilibili"):
-            await bilibili_group(app, group, message.display)
+            await bilibili_group(app, mytasks, group, message.display)
 
         if member.id == hostqq and message.display == '生日测试':
             await readexcel(app, 958056260)
@@ -869,12 +871,20 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
                 with open(Localpath, 'r', encoding='utf8')as fp:
                     cookies = json.load(fp)
                 data = cookies[sstr[1]]
-                print('正在进行消息拉取...')
+                print(f'{sstr[1]}正在进行消息拉取...')
                 msg_list = private_msg(app, data)
                 if msg_list:
                     await app.send_group_message(group, msg_list)
                 else:
-                    await app.send_group_message(group, MessageChain([Plain("没有拉取到东西")]))
+                    await app.send_group_message(group, MessageChain([Plain(f'{sstr[1]}没有拉取到东西')]))
+
+        if message.display == "打印任务":
+            print(mytasks)
+            await app.send_group_message(group, MessageChain([Plain(str(mytasks))]))
+        if message.display == "执行任务":
+            for i in mytasks:
+                asyncio.create_task(mytasks[i]())
+            
         # pcr运势模块
         if message.display == "运势":
             t = datetime.datetime.now() - datetime.timedelta(hours=0)
@@ -1186,16 +1196,33 @@ async def bot_kicked_hanler(app: Ariadne, event: BotLeaveEventKick):
 @bcc.receiver(ApplicationLaunched)
 async def repeattt(app: Ariadne):
 
+    # 这段的逻辑需要修改
+    # 现在的逻辑是，开机时检测是否完成初始化，若无则进行初始化
+    # 应修改成的逻辑是：
+    # 开机时不需要额外检查是否初始化。在执行过程中发现若未完成初始化则进行
+    # 已修改完成
+    # Localpath = './data/cookies.json'
+    # with open(Localpath, 'r', encoding='utf8')as fp:
+    #     cookies = json.load(fp)
+    # settings = cookies['settings']
+    # for i in settings:
+    #     if settings[i] == 1:
+    #         asyncio.create_task(private_msg_init(app, cookies[i]))
+
+    # TODO 实装整点报时之类的功能
+
+    # 整点任务在开机时完成初始化
+    # 将需要整点执行的任务作为lambda表达式加入mytasks字典当中
     Localpath = './data/cookies.json'
     with open(Localpath, 'r', encoding='utf8')as fp:
         cookies = json.load(fp)
     settings = cookies['settings']
     for i in settings:
+        # 此时i代表部门名
         if settings[i] == 1:
-            asyncio.create_task(private_msg_init(app, cookies[i]))
+            mytasks[i] = partial(getprivate, app, i)
 
-    # TODO 实装整点报时之类的功能
-    asyncio.create_task(clock(app))
+    asyncio.create_task(clock(app, mytasks))
     # asyncio.create_task(clock_test(app))
 
     global live
