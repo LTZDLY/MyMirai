@@ -1,10 +1,11 @@
 import random
 
 import requests
-from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.entry import Group, Member
+from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
+from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
 
 s = requests.session()
@@ -128,7 +129,9 @@ async def report(app, group, city):
     pass
 
 
-async def weather(app, inc, group, member, msg: str):
+async def weather_main(app, group, member, msg: str):
+    inc = InterruptControl(app.broadcast)
+
     t = msg.split(' ')
     if len(t) != 2:
         return

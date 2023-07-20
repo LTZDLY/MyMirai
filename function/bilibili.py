@@ -138,7 +138,7 @@ async def private_msg_init(app, tcookie):
                 continue
             bili_private[i["talker_id"]] = msg[0]['timestamp']
 
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(bili_private)
         fw.write(jsObj)
         fw.close()
@@ -218,7 +218,7 @@ async def private_msg(app, tcookie):
 
             bili_private[str(i["talker_id"])] = msg[0]['timestamp']
 
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(bili_private)
         fw.write(jsObj)
         fw.close()
@@ -327,7 +327,7 @@ async def login(app, group, msg: str):
         cookies[part]['SESSDATA'] = sd
         cookies[part]['cookie'] = f'SESSDATA={sd}; bili_jct={bj}'
 
-        with open(Localpath, "w") as fw:
+        with open(Localpath, "w", encoding='utf8') as fw:
             jsObj = json.dumps(cookies)
             fw.write(jsObj)
             fw.close()
@@ -364,7 +364,7 @@ async def createtask(app, mytasks, group, msg: str):
 
             cookies[part] = temp
 
-            with open(Localpath, "w") as fw:
+            with open(Localpath, "w", encoding='utf8') as fw:
                 jsObj = json.dumps(cookies)
                 fw.write(jsObj)
                 fw.close()
@@ -372,8 +372,6 @@ async def createtask(app, mytasks, group, msg: str):
             # await private_msg_init(app, temp)
             await getprivate(app, part)
             mytasks[part] = partial(getprivate, app, part)
-        
-
 
 async def bilibili(app, group, msg: str):
     if (msg == "bilibili.signup"):

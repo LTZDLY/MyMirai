@@ -94,7 +94,7 @@ def define(msg: str):
     if os.path.exists(Localpath) == False:
         jsObj = {'Define': data}
         jsObj = json.dumps(jsObj, ensure_ascii=False)
-        with open(Localpath, "w") as fw:
+        with open(Localpath, "w", encoding='utf8') as fw:
             fw.write(jsObj)
             fw.close()
     else:
@@ -104,7 +104,7 @@ def define(msg: str):
         data_new = {"Define": data}
         for i in data_new:
             jsObj[i] = data_new[i]
-        with open(Localpath, "w") as fw:
+        with open(Localpath, "w", encoding='utf8') as fw:
             jsObj = json.dumps(jsObj)
             fw.write(jsObj)
             fw.close()

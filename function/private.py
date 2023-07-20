@@ -166,7 +166,7 @@ async def priv_set(app, message: MessageChain):
         value = int(value)
         cookies['settings'][group] = value
 
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(cookies)
         fw.write(jsObj)
         fw.close()

@@ -448,7 +448,7 @@ async def setUP(app, group, msg):
         await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
     await app.send_group_message(group, MessageChain([Plain("将" + wanna + "设置为up卡成功！")]))
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
@@ -472,7 +472,7 @@ async def offUP(app, group, msg):
         await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
     await app.send_group_message(group, MessageChain([Plain("将" + wanna + "取消up卡成功！")]))
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
@@ -486,7 +486,7 @@ async def setD(app, group):
     fr.close()
     data["double"] = True
     await app.send_group_message(group, MessageChain([Plain("将卡池设为双倍三星概率成功！")]))
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
@@ -500,7 +500,7 @@ async def offD(app, group):
     fr.close()
     data["double"] = False
     await app.send_group_message(group, MessageChain([Plain("将卡池取消双倍三星概率成功！")]))
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
@@ -525,7 +525,7 @@ async def setDefine(app, group, msg):
     else:
         await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
@@ -552,7 +552,7 @@ async def offDefine(app, group, msg):
     else:
         await app.send_group_message(group, MessageChain([Plain("卡池里没有这个角色哦！")]))
         return
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
@@ -630,7 +630,7 @@ if __name__ == '__main__':
         i["short"] = aa
         pass
 
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()

@@ -5,9 +5,8 @@ import json
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Plain
 
-from function.bilibili import sign
-from function.data import dancing_group
-from function.excel import readexcel
+from function import bilibili
+from function import excel
 
 
 async def repeat(app):
@@ -22,8 +21,8 @@ async def repeat(app):
         if h == 0:
             sss = f'切噜~！{year}新年快乐！！新的一年也请多多指教哦！~☆'
         elif h == 7:
-            asyncio.create_task(sign(app, 372733015))
-            asyncio.create_task(readexcel(app, 958056260))
+            asyncio.create_task(bilibili.sign(app, 372733015))
+            asyncio.create_task(excel.readexcel(app, 958056260))
             sss = f'切噜~！已经七点了！{year}年的第一天请不要睡懒觉噜！∑'
         elif h == 12:
             sss = f'切噜~！中午好！尽情地享受{year}年的第一顿午饭吧！☆'
@@ -32,12 +31,12 @@ async def repeat(app):
         elif h == 18:
             sss = f'切噜~！晚上好！{year}年的第一天已经所剩无几了，接下来的时间也请尽情地享受呢噜！☆'
         elif h == 23:
-            asyncio.create_task(sign(app, 372733015))
+            asyncio.create_task(bilibili.sign(app, 372733015))
             sss = f'切噜~！23点啦！{year}年的第一天就这么过去了呢！希望各位接下来的每一天都能过的如此愉快！晚安安！♡'
     else:
         if h == 7:
-            asyncio.create_task(sign(app, 372733015))
-            asyncio.create_task(readexcel(app, 958056260))
+            asyncio.create_task(bilibili.sign(app, 372733015))
+            asyncio.create_task(excel.readexcel(app, 958056260))
             sss = '切噜~！早上好！已经七点了！该起床咯！'
         elif h == 12:
             sss = '切噜~！中午好！12点到啦吃午饭了吗！'
@@ -46,7 +45,7 @@ async def repeat(app):
         elif h == 18:
             sss = '切噜~！18点啦！记得吃晚饭哦！'
         elif h == 23:
-            asyncio.create_task(sign(app, 372733015))
+            asyncio.create_task(bilibili.sign(app, 372733015))
             sss = '切噜~！23点啦！到睡觉的时候啦！晚安安！'
 
     if sss != '':

@@ -142,7 +142,7 @@ def arksetDefine(msg):
                 i['short'] = []
             if not text[2] in i["short"]:
                 i["short"].append(text[2])
-                with open(Localpath, "w") as fw:
+                with open(Localpath, "w", encoding='utf8') as fw:
                     jsObj = json.dumps(ark_items)
                     fw.write(jsObj)
                     fw.close()
@@ -166,7 +166,7 @@ def arkoffDefine(msg):
                 i['short'] = []
             if text[2] in i["short"]:
                 i["short"].remove(text[2])
-                with open(Localpath, "w") as fw:
+                with open(Localpath, "w", encoding='utf8') as fw:
                     jsObj = json.dumps(ark_items)
                     fw.write(jsObj)
                     fw.close()

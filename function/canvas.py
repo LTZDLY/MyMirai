@@ -175,7 +175,7 @@ def add_person(qq_id, id, password):
 
     data['data'].append(dit)
 
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()

@@ -8,9 +8,9 @@ from graia.ariadne.entry import Group, Member
 def inban(member: int, group: int) -> bool:
     Localpath = './data/blacklist.json'
     data = {}
-    fr = open(Localpath, encoding='utf-8')
-    data = json.load(fr)
-    fr.close()
+    with open(Localpath, encoding='utf-8') as fr:
+        data = json.load(fr)
+        fr.close()
     if 'member' in data and member in data['member']:
         return True
     if 'group' in data and group in data['group']:
@@ -72,7 +72,7 @@ async def setMain(app, member: Member, group: Group, message: str):
     print(data)
 
     jsObj = json.dumps(data)
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         fw.write(jsObj)
         fw.close()
     '''
@@ -130,7 +130,7 @@ async def setMain(app, member: Member, group: Group, message: str):
     if os.path.exists(Localpath) == False:
         jsObj = {'Permission': data}
         jsObj = json.dumps(jsObj, ensure_ascii=False)
-        with open(Localpath, "w") as fw:
+        with open(Localpath, "w", encoding='utf8') as fw:
             fw.write(jsObj)
             fw.close()
     else:
@@ -140,7 +140,7 @@ async def setMain(app, member: Member, group: Group, message: str):
         data_new = {"Permission": data}
         for i in data_new:
             jsObj[i] = data_new[i]
-        with open(Localpath, "w") as fw:
+        with open(Localpath, "w", encoding='utf8') as fw:
             jsObj = json.dumps(jsObj)
             fw.write(jsObj)
             fw.close()

@@ -18,7 +18,7 @@ def initTodo():
     Localpath = 'data/todo.json'
     data = {}
     jsObj = json.dumps(data)
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         fw.write(jsObj)
         fw.close()
 
@@ -54,7 +54,7 @@ def setTodo(member, data, thing, form_name):
         else:
             data[member][form_name].append(thing)
     jsObj = json.dumps(data)
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         fw.write(jsObj)
         fw.close()
     return data[member][form_name]
@@ -75,7 +75,7 @@ def rmTodo(member, data, num, form_name):
     if not data[member][form_name]:
         del data[member][form_name]
     jsObj = json.dumps(data)
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         fw.write(jsObj)
         fw.close()
     return l

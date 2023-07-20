@@ -236,7 +236,7 @@ def livewrite(group: int, room_id: int):
         data['data'] = l
         pass
 
-    with open(Localpath, "w") as fw:
+    with open(Localpath, "w", encoding='utf8') as fw:
         jsObj = json.dumps(data)
         fw.write(jsObj)
         fw.close()
