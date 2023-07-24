@@ -11,7 +11,7 @@ from graia.ariadne.message.parser.base import MatchContent
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from function import decorators, private
+from function import decorators
 from function.data import hostqq
 
 channel = Channel.current()
@@ -78,16 +78,6 @@ async def forward_listener(app: Ariadne, message: MessageChain, friend: Friend):
 )
 async def friend_message_handler(app: Ariadne, friend: Friend):
     await app.send_friend_message(friend, MessageChain([Plain("切噜~♪")]))
-
-
-@channel.use(
-    ListenerSchema(
-        listening_events=[FriendMessage], decorators=[decorators.fromhost(hostqq)]
-    )
-)
-async def friendmsg_listener(app: Ariadne, message: MessageChain):
-    # # TODO 移植cq中最高权限的私聊指令
-    await private.priv_handler(app, message)
 
 
 @channel.use(ListenerSchema(listening_events=[TempMessage]))

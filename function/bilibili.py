@@ -10,8 +10,7 @@ from graia.ariadne.message.element import Forward, ForwardNode, Image, Plain
 
 from function.bilibili_private import draw_messages
 from function.bilibili_qrlogin import bilibili_qrlogin
-from function.data import (cookie, dancing_cookie, gravity_bili_jct,
-                           gravity_cookie, token)
+from function.data import (gravity_bili_jct, gravity_cookie)
 
 table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
 tr = {}
@@ -30,9 +29,14 @@ def dec(x):
 
 
 async def sign(app, group):
+    Localpath = './data/cookies.json'
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
     url = "https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign"
-    headers = {"cookie": cookie, "room_id": "330091",
-               "csrf_token": token, "csrf": token}
+    headers = {"cookie": data['shinoai']['cookie'], "room_id": "330091",
+               "csrf_token": data['shinoai']['bili_jct'], "csrf": data['shinoai']['bili_jct']}
     r = requests.get(url, headers=headers)
     if (r.json()["code"] == 0):
         await app.send_group_message(group, MessageChain([Plain("签到成功！本次签到奖励为：" + r.json()["data"]["text"])]))
@@ -42,10 +46,15 @@ async def sign(app, group):
 
 
 async def get(app, group):
+    Localpath = './data/cookies.json'
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
     url = "https://api.live.bilibili.com/room/v1/Room/startLive"
-    headers = {"cookie": cookie}
-    data = {"room_id": "330091", "csrf_token": token,
-            "csrf": token, "area_v2": "235", "platform": "pc"}
+    headers = {"cookie": data['shinoai']['cookie']}
+    data = {"room_id": "330091", "csrf_token": data['shinoai']['bili_jct'],
+            "csrf": data['shinoai']['bili_jct'], "area_v2": "235", "platform": "pc"}
     r = requests.post(url, data, headers=headers)
     addr = r.json()["data"]["rtmp"]["addr"]
     code = r.json()["data"]["rtmp"]["code"]
@@ -58,16 +67,26 @@ async def get(app, group):
 
 
 async def end(app, group):
+    Localpath = './data/cookies.json'
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
     url = "https://api.live.bilibili.com/room/v1/Room/stopLive"
-    headers = {"cookie": cookie}
-    data = {"room_id": "330091", "csrf_token": token,
-            "csrf": token, "platform": "pc"}
+    headers = {"cookie": data['shinoai']['cookie']}
+    data = {"room_id": "330091", "csrf_token": data['shinoai']['bili_jct'],
+            "csrf": data['shinoai']['bili_jct'], "platform": "pc"}
     r = requests.post(url, data, headers=headers)
     if (r.json()["data"]["status"] == "PREPARING"):
         await app.send_group_message(group, MessageChain([Plain("直播间关闭成功")]))
 
 
 async def change(app, group, msg: str):
+    Localpath = './data/cookies.json'
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
     text = msg.split(' ')
     if (len(text) < 2):
         return
@@ -79,9 +98,9 @@ async def change(app, group, msg: str):
         title = title + ' ' + text[i]
 
     url = "https://api.live.bilibili.com/room/v1/Room/update"
-    headers = {"cookie": cookie}
-    data = {"room_id": "330091", "csrf_token": token,
-            "csrf": token, "title": title}
+    headers = {"cookie": data['shinoai']['cookie']}
+    data = {"room_id": "330091", "csrf_token": data['shinoai']['bili_jct'],
+            "csrf": data['shinoai']['bili_jct'], "title": title}
     r = requests.post(url, data, headers=headers)
     if (r.json()["msg"] == "ok"):
         await app.send_group_message(group, MessageChain([Plain(f"直播间标题已更改为：\n{title}")]))
@@ -90,6 +109,11 @@ async def change(app, group, msg: str):
 
 
 async def triple(app, group, msg: str):
+    Localpath = './data/cookies.json'
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
     text = msg.split(' ')
     if (len(text) < 2):
         return
@@ -102,8 +126,8 @@ async def triple(app, group, msg: str):
         av = dec(text[1])
 
     url = " https://api.bilibili.com/x/web-interface/archive/like/triple"
-    headers = {"cookie": cookie}
-    data = {"csrf": token, "aid": av}
+    headers = {"cookie": data['shinoai']['cookie']}
+    data = {"csrf": data['shinoai']['bili_jct'], "aid": av}
     r = requests.post(url, data, headers=headers)
     if (r.json()["code"] == 0):
         await app.send_group_message(group, MessageChain([Plain("三连成功！")]))
@@ -300,7 +324,8 @@ def bili_private_handler(app, msgs, tcookie):
     return message
 
 
-async def login(app, group, msg: str):
+async def login(app, group, msg: str, mytasks):
+    n = False
     text = msg.split(' ', 1)
     if (len(text) < 2):
         await app.send_group_message(group, MessageChain([Plain("缺少参数")]))
@@ -312,8 +337,9 @@ async def login(app, group, msg: str):
         cookies = json.load(fp)
 
     if not part in cookies['settings']:
-        await app.send_group_message(group, MessageChain([Plain("没有该部门的拉取任务记录，请使用 bilibili.createtask 创建新的拉取任务")]))
-        return
+        n = True
+        await app.send_group_message(group, MessageChain([Plain("没有该部门的登录记录，现在创建新的登录记录。")]))
+        # cookies['settings'][part] = 1
     await app.send_group_message(group, MessageChain([Plain(f"您现在正在对{part}进行二维码登录，请使用已登录该账号的B站客户端扫描二维码完成登录")]))
     
     f, get_cookies = await bilibili_qrlogin(app, group)
@@ -322,54 +348,29 @@ async def login(app, group, msg: str):
     if f:
         bj = requests.utils.dict_from_cookiejar(get_cookies)["bili_jct"]
         sd = requests.utils.dict_from_cookiejar(get_cookies)["SESSDATA"]
+        uid = requests.utils.dict_from_cookiejar(get_cookies)["DedeUserID"]
 
-        cookies[part]['bili_jct'] = bj
-        cookies[part]['SESSDATA'] = sd
-        cookies[part]['cookie'] = f'SESSDATA={sd}; bili_jct={bj}'
+        if n:
+            temp = {}
+            temp['uid'] = int(uid)
+            temp['name'] = part
+            temp['group'] = group.id
+            temp['bili_jct'] = bj
+            temp['SESSDATA'] = sd
+            temp['cookie'] = f'SESSDATA={sd}; bili_jct={bj}'
+            cookies[part] = temp
+        else:
+            cookies[part]['bili_jct'] = bj
+            cookies[part]['SESSDATA'] = sd
+            cookies[part]['cookie'] = f'SESSDATA={sd}; bili_jct={bj}'
 
         with open(Localpath, "w", encoding='utf8') as fw:
             jsObj = json.dumps(cookies)
             fw.write(jsObj)
             fw.close()
 
-
-async def createtask(app, mytasks, group, msg: str):
-    text = msg.split(' ', 1)
-    if (len(text) < 2):
-        await app.send_group_message(group, MessageChain([Plain("缺少参数")]))
-        return
-    part = text[1]
-
-    Localpath = './data/cookies.json'
-    with open(Localpath, 'r', encoding='utf8')as fp:
-        cookies = json.load(fp)
-
-    if not part in cookies['settings']:
-        await app.send_group_message(group, MessageChain([Plain(f"为{part}创建拉取任务，请使用已登录该账号的B站客户端扫描二维码完成登录")]))
-        cookies['settings'][part] = 1
-
-        f, get_cookies = await bilibili_qrlogin(app, group)
-
-        # 保存cookie
-        if f:
-            bj = requests.utils.dict_from_cookiejar(get_cookies)["bili_jct"]
-            sd = requests.utils.dict_from_cookiejar(get_cookies)["SESSDATA"]
-            
-            temp = {}
-            temp['name'] = part
-            temp['group'] = group.id
-            temp['bili_jct'] = bj
-            temp['SESSDATA'] = sd
-            temp['cookie'] = f'SESSDATA={sd}; bili_jct={bj}'
-
-            cookies[part] = temp
-
-            with open(Localpath, "w", encoding='utf8') as fw:
-                jsObj = json.dumps(cookies)
-                fw.write(jsObj)
-                fw.close()
-    
-            # await private_msg_init(app, temp)
+        # await private_msg_init(app, temp)
+        if n:
             await getprivate(app, part)
             mytasks[part] = partial(getprivate, app, part)
 
@@ -388,9 +389,9 @@ async def bilibili(app, group, msg: str):
 
 async def bilibili_group(app, mytasks, group, msg: str):
     if (msg.startswith("bilibili.login")):
-        await login(app, group, msg)
-    if (msg.startswith("bilibili.createtask")):
-        await createtask(app, mytasks, group, msg)
+        await login(app, group, msg, mytasks)
+    # if (msg.startswith("bilibili.createtask")):
+    #     await createtask(app, mytasks, group, msg)
 
 # private_msg()
 

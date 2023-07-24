@@ -7,6 +7,7 @@ import datetime
 import json
 import zlib
 
+import brotli
 import requests
 from aiowebsocket.converses import AioWebSocket
 from graia.ariadne.message.chain import MessageChain
@@ -19,21 +20,37 @@ hb = '00000010001000010000000200000001'
 
 
 def get_data(room_id):
+    Localpath = './data/cookies.json'
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
+    headers = {'cookies': data['shinoai']['cookie']}
+    s = requests.session()
+    url = 'https://data.bilibili.com/v/'
+    r = s.get(url, headers=headers)
+    if (r.status_code == 200):
+        # print(r.cookies)
+        buvid = r.cookies['buvid3']
+
     '''生成握手包数据'''
     # 获取token
     url = 'https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id=%s&type=0' % room_id
-    r = requests.get(url)
+    r = s.get(url, headers=headers)
     if (r.json()["code"] == 0):
         key = r.json()['data']['token']
+        global remote
+        remote = f"wss://{r.json()['data']['host_list'][0]['host']}/sub"
 
     # 握手包数据内容
-    data_json = {'uid': 0,
+    data_json = {'uid': 8012418,
                  'roomid': int(room_id),
-                 'protover': 2,
+                 'protover': 3,
                  'platform': 'web',
-                 'clientver': '2.6.41',
+                #  'clientver': '2.6.41',
                  'type': 2,
-                 'key': key}
+                 'key': key,
+                 'buvid': buvid}
     text = json.dumps(data_json)
 
     # 握手包数据头
@@ -65,9 +82,10 @@ async def entrence(app, room_id):
 
 async def startup(app, room_id: str):
     '''创建ws连接b站弹幕服务器'''
+    d = get_data(room_id)
     async with AioWebSocket(remote) as aws:
         converse = aws.manipulator
-        await converse.send(get_data(room_id))
+        await converse.send(d)
         tasks = asyncio.create_task(sendHeartBeat(converse, room_id))
         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
         t = t[:len(t) - 3] + ']'
@@ -113,28 +131,31 @@ async def printDM(app, data, room_id):
     op = int(data[8:12].hex(), 16)
 
     # 有的时候可能会两个数据包连在一起发过来，所以利用前面的数据包长度判断，
-
     if (len(data) > packetLen):
         await printDM(app, data[packetLen:], room_id)
         data = data[:packetLen]
 
-    # 有时会发送过来 zlib 压缩的数据包，这个时候要去解压。
+    # ver 为1的时候为进入房间后或心跳包服务器的回应。op 为3的时候为房间的人气值。
+    # if (ver == 1):
+    #     if (op == 3):
+    #         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
+    #         t = t[:len(t) - 3] + ']'
+    #         print('%s[POPULARITY]: %s: %d' % (t, room_id, int(data[16:].hex(), 16)))
+    #     return
+
+    # ver 为2的时候代表接收到的是 zlib 压缩的数据包，这个时候要去解压。
     if (ver == 2):
         data = zlib.decompress(data[16:])
         await printDM(app, data, room_id)
-        return
 
-    # ver 为1的时候为进入房间后或心跳包服务器的回应。op 为3的时候为房间的人气值。
-    if (ver == 1):
-        if (op == 3):
-            t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-            t = t[:len(t) - 3] + ']'
-            # print('%s[POPULARITY]: %s: %d' % (t, room_id, int(data[16:].hex(), 16)))
-        return
+    # ver 为3的时候代表接收到的是 bortli 压缩的数据包，这个时候要去解压。
+    elif (ver == 3):
+        data = brotli.decompress(data[16:])
+        await printDM(app, data, room_id)
 
     # ver 不为2也不为1目前就只能是0了，也就是普通的 json 数据。
     # op 为5意味着这是通知消息，cmd 基本就那几个了。
-    if (op == 5):
+    elif (op == 5):
         jd = json.loads(data[16:].decode('utf-8', errors='ignore'))
         sstr = ''
         '''
@@ -169,21 +190,24 @@ async def printDM(app, data, room_id):
         print('%s[NOTICE]: %s: LIVE START!' % (t, room_id))
         Localpath = './data/live.json'
         data = {}
-        fr = open(Localpath, encoding='utf-8')
-        data = json.load(fr)
-        fr.close()
+        with open(Localpath, encoding='utf-8') as fr:
+            data = json.load(fr)
+            fr.close()
         info = get_info(room_id)
         for i in data["data"]:
             if (room_id != str(i['room_id'])):
                 continue
             for j in i['group']:
-                sstr = f'{info["uname"]}的直播开始啦！\n直播间标题：{info["title"]}\n直播关键帧：'
-                await app.send_group_message(j, MessageChain([
-                    Plain(sstr),
-                    Image(url=info['keyframe']),
-                    Plain('\n直播间地址：https://live.bilibili.com/%d' %
-                          info['room_id'])
-                ]))
+                try:    
+                    sstr = f'{info["uname"]}的直播开始啦！\n直播间标题：{info["title"]}\n直播关键帧：'
+                    await app.send_group_message(j, MessageChain([
+                        Plain(sstr),
+                        Image(url=info['keyframe']),
+                        Plain('\n直播间地址：https://live.bilibili.com/%d' %
+                            info['room_id'])
+                    ]))
+                except:
+                    pass
             raise Exception("断开连接")
 
 
@@ -219,9 +243,9 @@ def livewrite(group: int, room_id: int):
     '''写入json文件'''
     Localpath = './data/live.json'
     data = {}
-    fr = open(Localpath, encoding='utf-8')
-    data = json.load(fr)
-    fr.close()
+    with open(Localpath, encoding='utf-8') as fr:
+        data = json.load(fr)
+        fr.close()
 
     for i in data["data"]:
         if i['room_id'] == room_id:

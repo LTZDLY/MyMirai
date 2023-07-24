@@ -12,17 +12,16 @@ from graia.ariadne.entry import Group, Member
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import (At, Forward, ForwardNode, Image,
-                                           Plain, Quote, Voice)
-from graia.ariadne.message.parser.base import (ContainKeyword, DetectPrefix,
-                                               MatchContent)
+                                           Plain, Voice)
+from graia.ariadne.message.parser.base import DetectPrefix, MatchContent
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax import silkcoder
 
-from function import (arknights, bilibili, cherugo, danmaku, decorators, excel,
-                      image, ini, latex, leetcode, mute, ouen, pcr, permission,
+from function import (arknights, bilibili, cherugo, danmaku, decorators, image,
+                      ini, latex, leetcode, mute, ouen, pcr, permission,
                       portune, repeat, signup, switch, todotree, weather)
-from function.data import bed, hostqq, listen, mygroup, mytasks, rep
+from function.data import bed, hostqq, listen, live, mygroup, mytasks, rep
 
 channel = Channel.current()
 
@@ -37,6 +36,8 @@ async def callme_listener(
     app: Ariadne, message: MessageChain, group: Group, member: Member
 ):
     # 监听事件永远最优先
+    if type(message.__root__[1]) == Forward:
+        return
     for i in listen:
         if i in message.as_persistent_string():
             break
@@ -80,29 +81,11 @@ async def switch_listener(
 async def cheru(app: Ariadne, group: Group, member: Member):
     await app.send_group_message(group, MessageChain([Plain("切噜~♪")]))
 
-    # 此处发语音功能限定文件格式为silk，并且对框架具有一定版本要求，并且音质贼差
     filePath = "./source/audio/cheru/"
     for i, j, k in os.walk(filePath):
         file = filePath + k[random.randint(0, len(k) - 1)]
     audio_bytes = await silkcoder.async_encode(file, ios_adaptive=True)
     await app.send_group_message(group, MessageChain([Voice(data_bytes=audio_bytes)]))
-
-
-@channel.use(
-    ListenerSchema(
-        listening_events=[GroupMessage],
-        decorators=[ContainKeyword("recall"), decorators.check_permission(1)],
-    )
-)
-async def recall_listener(app: Ariadne, message: MessageChain):
-    # bot撤回指令，不支持转义
-    if message.has(Quote):
-        for at in message.get(Quote):
-            try:
-                await app.recallMessage(at.id)
-                await app.recallMessage(message.__root__[0].id)
-            except:
-                pass
 
 
 # @channel.use(ListenerSchema(listening_events=
@@ -350,9 +333,6 @@ async def group_message_handler(
             if message.display.startswith("更改直播间标题"):
                 await bilibili.change_gravity(app, group, message.display)
 
-        if member.id == hostqq and message.display == "生日测试":
-            await excel.readexcel(app, 958056260)
-
         msg = message.display  # 存储转义
 
         data = signup.loadDefine()
@@ -367,10 +347,6 @@ async def group_message_handler(
             if msgs.find(i) == -1:
                 continue
             msgs = msgs.replace(i, data[i])
-
-        # 权限增删
-        if msg.startswith("set ") or msg.startswith("off "):
-            await permission.setMain(app, member, group, msgs)
 
         if (
             message.display == "?"
@@ -401,15 +377,14 @@ async def group_message_handler(
         # TODO 实装TouHouRoll机
 
         # 直播订阅模块
-        global live
         if msg.startswith("订阅直播 "):
             room_id = msg.replace("订阅直播 ", "")
 
             Localpath = "./data/live.json"
             data = {}
-            fr = open(Localpath, encoding="utf-8")
-            data = json.load(fr)
-            fr.close()
+            with open(Localpath, encoding="utf-8") as fr:
+                data = json.load(fr)
+                fr.close()
 
             for i in data["data"]:
                 if room_id == str(i["room_id"]):
@@ -443,9 +418,9 @@ async def group_message_handler(
 
             Localpath = "./data/live.json"
             data = {}
-            fr = open(Localpath, encoding="utf-8")
-            data = json.load(fr)
-            fr.close()
+            with open(Localpath, encoding="utf-8") as fr:
+                data = json.load(fr)
+                fr.close()
 
             for i in data["data"]:
                 if room_id == str(i["room_id"]):
@@ -495,6 +470,7 @@ async def group_message_handler(
                 )
             else:
                 await app.send_group_message(group, MessageChain([Plain(info["msg"])]))
+
         # # canvas任务爬取模块
         # global sess
         # if msg.startswith('canvas.'):
@@ -565,38 +541,6 @@ async def group_message_handler(
                 m.__root__[0].display = ""
                 await app.send_group_message(group, m)
 
-        if member.id == hostqq and msg == "packup":
-            date = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            os.makedirs(f"./data/{date}/")
-            try:
-                await excel.packup(app, group.id, date)
-                await app.send_group_message(group, MessageChain([Plain("备份群成员信息成功")]))
-            except:
-                await app.send_group_message(group, MessageChain([Plain("备份群成员信息失败")]))
-                traceback.print_exc()
-                await app.send_group_message(
-                    group, MessageChain([Plain(traceback.format_exc())])
-                )
-
-        if member.id == hostqq and msg == "packupall":
-            date = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            os.makedirs(f"./data/{date}/")
-            try:
-                my_list = await app.get_group_list()
-                for i in my_list:
-                    await excel.packup(app, i.id, date)
-                await app.send_group_message(
-                    group, MessageChain([Plain("备份所有群成员信息成功")])
-                )
-            except:
-                await app.send_group_message(
-                    group, MessageChain([Plain("备份所有群成员信息失败")])
-                )
-                traceback.print_exc()
-                await app.send_group_message(
-                    group, MessageChain([Plain(traceback.format_exc())])
-                )
-
         # FIXME leetcode每日题库好像有点问题记得修
         if msg == "leetcode.daily":
             await leetcode.get_daily(app, group)
@@ -615,9 +559,9 @@ async def group_message_handler(
         if msg.startswith("latex "):
             await latex.latex(app, group, msg)
 
-        if message.display.startswith("define "):
-            if permission.permissionCheck(member.id, group.id) == 3:
-                signup.define(message.display)
+        # if message.display.startswith("define "):
+        #     if permission.permissionCheck(member.id, group.id) == 3:
+        #         signup.define(message.display)
 
         # 切噜语模块
         if msg.startswith("切噜语加密 "):
@@ -768,33 +712,6 @@ async def group_message_handler(
                         return
                     await app.send_group_message(group, MessageChain([Plain(ss)]))
                     return
-
-        # 测试拉取
-
-        if message.display.startswith("测试拉取"):
-            sstr = message.display.split(" ", 2)
-            if len(sstr) < 2:
-                await app.send_group_message(group, MessageChain([Plain("缺少参数")]))
-            else:
-                Localpath = "./data/cookies.json"
-                with open(Localpath, "r", encoding="utf8") as fp:
-                    cookies = json.load(fp)
-                data = cookies[sstr[1]]
-                print(f"{sstr[1]}正在进行消息拉取...")
-                msg_list = await bilibili.private_msg(app, data)
-                if msg_list:
-                    await app.send_group_message(group, msg_list)
-                else:
-                    await app.send_group_message(
-                        group, MessageChain([Plain(f"{sstr[1]}没有拉取到东西")])
-                    )
-
-        if message.display == "打印任务":
-            print(mytasks)
-            await app.send_group_message(group, MessageChain([Plain(str(mytasks))]))
-        if message.display == "执行任务":
-            for i in mytasks:
-                asyncio.create_task(mytasks[i]())
 
         # pcr运势模块
         if message.display == "运势":
