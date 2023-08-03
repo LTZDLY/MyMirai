@@ -57,7 +57,7 @@ async def ouen(app, txt: str, group):
 
     s_draw.text((x, y), txt, fill=(0, 0, 0), font=font)
     s_rotate = s_background.rotate(-5, expand=1)  # 图像会转动随机的角度
-    mask.resize(s_rotate.size)
+    mask.resize(s_rotate.size, Img.LANCZOS)
 
     out1 = Img.composite(s_rotate, mask, s_rotate)  # 第一次复合生成的图片是旋转后去黑色背景图片
     mask = out1
