@@ -144,8 +144,7 @@ def drawing_pic(var=None, model='') -> BytesIO:
 
     # img = pic2b64(img)
     # img = MessageSegment.image(img)
-    img_bytes = BytesIO()
-    img.save(img_bytes, format="PNG")
+    img.save(img_bytes := BytesIO(), format="PNG")
     img.close()
     return img_bytes
 

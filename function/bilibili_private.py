@@ -1,9 +1,9 @@
-import os
 from io import BytesIO
 
 import requests
+from graia.ariadne.util.async_exec import cpu_bound
 from PIL import Image as Img
-from PIL import ImageDraw, ImageFont
+from PIL import ImageDraw, ImageFilter, ImageFont
 
 TABLE_WIDTH = 4
 MASSAGE_WIDTH = 1500
@@ -17,6 +17,7 @@ TIMESIZE = 25
 HEAD_SIZE = 75
 MESSAGE_SPACE = 15
 MYFONT = r"./source/font/DengXian.ttf"
+NAME_BOARDER_WIDTH = 2
 
 
 def line_break(line, char_count=LINE_CHAR_COUNT):
@@ -97,33 +98,6 @@ def circle(img_path):
 
     return ima
 
-    # size = ima.size
-    # # ima=ima.resize((size[0] * 2, size[1] * 2), Img.LANCZOS)
-    # size = ima.size
-    # # print(size)
-    # # 因为是要圆形，所以需要正方形的图片
-    # r2 = min(size[0], size[1])
-    # if size[0] != size[1]:
-    #     ima = ima.resize((r2, r2), Img.LANCZOS)
-    # # 最后生成圆的半径
-    # r3 = int(r2 / 2)
-    # imb = Img.new("RGBA", (r3 * 2, r3 * 2), (255, 255, 255, 0))
-    # pima = ima.load()  # 像素的访问对象
-    # pimb = imb.load()
-    # r = float(r2 / 2)  # 圆心横坐标
-
-    # for i in range(r2):
-    #     for j in range(r2):
-    #         lx = abs(i - r)  # 到圆心距离的横坐标
-    #         ly = abs(j - r)  # 到圆心距离的纵坐标
-    #         l = (pow(lx, 2) + pow(ly, 2)) ** 0.5  # 三角函数 半径
-    #         if l < r3:
-    #             pimb[i - (r - r3), j - (r - r3)] = pima[i, j]
-
-    # # imb=imb.resize((size[0] // 2, size[1] // 2), Img.LANCZOS)
-    # # imb.save('E:/Mirai/Graia/cir_img.png')
-    # return imb
-
 
 def get_font_render_size(text, size):
     """
@@ -132,7 +106,8 @@ def get_font_render_size(text, size):
     if not text:
         return (0, 0)
     # 获取字体大小
-    canvas = Img.new("RGB", (2048, 2048))
+    r = (((len(text)) * size), size)
+    canvas = Img.new("RGB", r)
     draw = ImageDraw.Draw(canvas)
     monospace = ImageFont.truetype(MYFONT, size)
     draw.text((0, 0), text, font=monospace, fill=(255, 255, 255))
@@ -143,8 +118,8 @@ def get_font_render_size(text, size):
     return size
 
 
-def draw_dialog(text: str, sender=0):
-    # 绘制对话框
+def draw_text(text: str, sender=0):
+    # 绘制对话
 
     if not sender:
         bkrgb = (255, 255, 255)
@@ -179,46 +154,7 @@ def draw_dialog(text: str, sender=0):
         return circle_corner(canvas, 30, (1, 0, 1, 1))
 
 
-def draw_message(text, face, sender=0, myface=None):
-    # 绘制一条消息
-    img_txt = draw_dialog(text, sender)
-    if not sender:
-        img_head = face
-    else:
-        img_head = myface
-    size_txt = img_txt.size
-
-    _, _, _, a1 = img_head.split()
-    _, _, _, a2 = img_txt.split()
-
-    img = Img.new("RGBA", (MASSAGE_WIDTH, size_txt[1] + 30), (244, 245, 247, 255))
-
-    if not sender:
-        img.paste(img_head, box=(MESSAGE_SPACE, MESSAGE_SPACE), mask=a1)
-        img.paste(img_txt, box=(MESSAGE_SPACE * 2 + HEAD_SIZE, MESSAGE_SPACE), mask=a2)
-    else:
-        img.paste(
-            img_head,
-            box=(img.size[0] - MESSAGE_SPACE - HEAD_SIZE, MESSAGE_SPACE),
-            mask=a1,
-        )
-        img.paste(
-            img_txt,
-            box=(
-                MASSAGE_WIDTH
-                - (size_txt[0] + MESSAGE_SPACE * 3 + HEAD_SIZE)
-                + MESSAGE_SPACE,
-                MESSAGE_SPACE,
-            ),
-            mask=a2,
-        )
-
-    # img.show()
-    # img.save('E:/Mirai/Graia/testtt.png')
-    return img
-
-
-def draw_video(content, face, sender=0, myface=None):
+def draw_video(content):
     bkrgb = (255, 255, 255)
     ftrgb = (0, 0, 0)
 
@@ -267,52 +203,13 @@ def draw_video(content, face, sender=0, myface=None):
     vid_tag = circle_corner(vid_tag, 5)
 
     img_text = circle_corner(img_text, 30)
-    _, _, _, a3 = vid_tag.split()
+    a3 = vid_tag.getchannel("A")
     img_text.paste(vid_tag, (705, 30), mask=a3)
-    if not sender:
-        img_head = face
-    else:
-        img_head = myface
 
-    if vid_img.size[1] < MIN_MASSAGE_HEIGHT:
-        size_txt = (vid_img.size[0], MIN_MASSAGE_HEIGHT)
-    else:
-        size_txt = vid_img.size
-
-    _, _, _, a1 = img_head.split()
-    _, _, _, a2 = img_text.split()
-
-    img = Img.new(
-        "RGBA",
-        (MASSAGE_WIDTH, 60 + img_text.size[1]),
-        (244, 245, 247, 255),
-    )
-
-    if not sender:
-        img.paste(img_head, box=(MESSAGE_SPACE, MESSAGE_SPACE), mask=a1)
-        img.paste(img_text, box=(MESSAGE_SPACE * 2 + HEAD_SIZE, MESSAGE_SPACE), mask=a2)
-    else:
-        img.paste(
-            img_head,
-            box=(MASSAGE_WIDTH - MESSAGE_SPACE - HEAD_SIZE, MESSAGE_SPACE),
-            mask=a1,
-        )
-        img.paste(
-            img_text,
-            box=(
-                MASSAGE_WIDTH
-                - (size_txt[0] + MESSAGE_SPACE * 3 + HEAD_SIZE)
-                + MESSAGE_SPACE,
-                MESSAGE_SPACE,
-            ),
-            mask=a2,
-        )
-
-    # img.save('E:/Mirai/Graia/testtt.png')
-    return img
+    return img_text
 
 
-def draw_img(content, face, sender=0, myface=None):
+def draw_img(content, sender=0):
     yzmdata = requests.get(content["url"])
     tempIm = BytesIO(yzmdata.content)
 
@@ -332,43 +229,65 @@ def draw_img(content, face, sender=0, myface=None):
         )
 
     if not sender:
+        return circle_corner(img_txt, 30, (0, 1, 1, 1))
+    else:
+        return circle_corner(img_txt, 30, (1, 0, 1, 1))
+
+
+def piece_header(dialog: Img, face, sender, myface):
+    """将对话框和头像拼接在一起组成一条消息"""
+    a2 = dialog.getchannel("A")
+    oriimg = Img.new("RGBA", (dialog.size[0], dialog.size[1]), (168, 226, 250))
+    oriimg.putalpha(a2)
+
+    newimg = Img.new(
+        "RGBA", (dialog.size[0] + 20, dialog.size[1] + 20), (244, 245, 247, 255)
+    )
+    a = dialog.getchannel("A")
+    newimg.paste(oriimg, (10, 10), a)
+
+    gaussImage = newimg.filter(ImageFilter.GaussianBlur(5))
+    gaussImage.paste(dialog, (10, 5), a2)
+    a2 = gaussImage.getchannel("A")
+
+    img = Img.new("RGBA", (MASSAGE_WIDTH, dialog.size[1] + 30), (244, 245, 247, 255))
+    if not sender:
         img_head = face
     else:
         img_head = myface
-    if img_txt.size[1] < MIN_MASSAGE_HEIGHT:
-        size_txt = (img_txt.size[0], MIN_MASSAGE_HEIGHT)
-    else:
-        size_txt = img_txt.size
 
-    _, _, _, a1 = img_head.split()
-    _, _, _, a2 = img_txt.split()
-
-    img = Img.new("RGBA", (MASSAGE_WIDTH, size_txt[1] + 30), (244, 245, 247, 255))
+    a1 = img_head.getchannel("A")
+    a2 = gaussImage.getchannel("A")
 
     if not sender:
+        img.paste(
+            gaussImage,
+            box=(MESSAGE_SPACE * 2 + HEAD_SIZE - 10, MESSAGE_SPACE - 5),
+            mask=a2,
+        )
         img.paste(img_head, box=(MESSAGE_SPACE, MESSAGE_SPACE), mask=a1)
-        img.paste(img_txt, box=(MESSAGE_SPACE * 2 + HEAD_SIZE, MESSAGE_SPACE), mask=a2)
     else:
+        img.paste(
+            gaussImage,
+            box=(
+                MASSAGE_WIDTH
+                - (dialog.size[0] + MESSAGE_SPACE * 3 + HEAD_SIZE)
+                + MESSAGE_SPACE
+                - 10,
+                MESSAGE_SPACE - 5,
+            ),
+            mask=a2,
+        )
         img.paste(
             img_head,
             box=(MASSAGE_WIDTH - MESSAGE_SPACE - HEAD_SIZE, MESSAGE_SPACE),
             mask=a1,
         )
-        img.paste(
-            img_txt,
-            box=(
-                MASSAGE_WIDTH
-                - (size_txt[0] + MESSAGE_SPACE * 3 + HEAD_SIZE)
-                + MESSAGE_SPACE,
-                MESSAGE_SPACE,
-            ),
-            mask=a2,
-        )
 
-    # img.save('E:/Mirai/Graia/testtt.png')
     return img
 
 
+@cpu_bound
 def draw_messages(msg_list):
     img_list = []
 
@@ -383,20 +302,19 @@ def draw_messages(msg_list):
         for j in msgs:
             sender = 1 if "sender" in j else 0
             if j["type"] == "video":
-                img_temp = draw_video(j["content"], face, sender, myface)
-                msgs_img.append(img_temp)
-                y += img_temp.size[1]
+                img_temp = draw_video(j["content"])
             elif j["type"] != "img":
-                img_temp = draw_message(
-                    line_break(j["content"]["content"]), face, sender, myface
-                )
-                msgs_img.append(img_temp)
-                y += img_temp.size[1]
+                img_temp = draw_text(line_break(j["content"]["content"]), sender)
             else:
-                img_temp = draw_img(j["content"], face, sender, myface)
-                msgs_img.append(img_temp)
-                y += img_temp.size[1]
-        img = Img.new("RGBA", (x, y + 100 + 58 * len(msgs)), (244, 245, 247, 255))
+                img_temp = draw_img(j["content"], sender)
+
+            img_temp = piece_header(img_temp, face, sender, myface)
+            msgs_img.append(img_temp)
+            y += img_temp.size[1]
+
+        img = Img.new(
+            "RGBA", (x, y + 90 + (60 + TIMESIZE) * len(msgs)), (244, 245, 247, 255)
+        )
 
         # 绘制姓名框
         a = ImageDraw.ImageDraw(img)
@@ -404,7 +322,7 @@ def draw_messages(msg_list):
             ((0, 0), (x, HEAD_SIZE)),
             fill=(255, 255, 255),
             outline=(233, 234, 236),
-            width=5,
+            width=NAME_BOARDER_WIDTH,
         )
 
         # 绘制姓名
@@ -419,13 +337,14 @@ def draw_messages(msg_list):
         for j in range(len(msgs_img) - 1, -1, -1):
             # 逆序遍历，图片从上往下绘制，保证旧的消息在上方
             # 绘制时间
+            ny += 20
             time = msgs[j]["time"]
             t = get_font_render_size(time, TIMESIZE)
             # print(t)
             s_x = (x - t[0]) // 2
             monospace2 = ImageFont.truetype(MYFONT, TIMESIZE)
-            title.text((s_x, ny + 25), time, font=monospace2, fill=(153, 153, 153))
-            ny += t[1] + 80
+            title.text((s_x, ny), time, font=monospace2, fill=(153, 153, 153))
+            ny += t[1] + 40
 
             # 粘贴消息图片
             img.paste(msgs_img[j], (0, ny))

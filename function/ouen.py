@@ -62,8 +62,7 @@ async def ouen(app, txt: str, group):
     out1 = Img.composite(s_rotate, mask, s_rotate)  # 第一次复合生成的图片是旋转后去黑色背景图片
     mask = out1
     # out1.show()
-    img_bytes = BytesIO()
-    out1.save(img_bytes, format="PNG")
+    out1.save(img_bytes := BytesIO(), format="PNG")
     out1.close()
 
     await app.send_group_message(group, MessageChain([

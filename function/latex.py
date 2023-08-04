@@ -24,8 +24,7 @@ async def draw_latex(t):
     r, g, b = r*color[0], g*color[1], b*color[2]  # RGB通道设置为目标颜色
     im = np.dstack((r, g, b, a)).astype(np.uint8)  # RGBA四个通道合并为三维的numpy数组
     im = Img.fromarray(im)  # numpy数组转PIL图像对象
-    img_bytes = BytesIO()
-    im.save(img_bytes, format="PNG")
+    im.save(img_bytes := BytesIO(), format="PNG")
     im.close()
     return img_bytes
     # im.save(r'd:\demo_5.png')  # PIL图像对象保存为文件

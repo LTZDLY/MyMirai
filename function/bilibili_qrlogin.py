@@ -37,8 +37,7 @@ async def bilibili_qrlogin(app, group):
     qr = qrcode.QRCode()
     qr.add_data(loginurl)
     img = qr.make_image()
-    img_bytes = BytesIO()
-    img.save(img_bytes, 'png')
+    img.save(img_bytes := BytesIO(), 'png')
     png = img_bytes.getvalue()
     img_bytes.close()
     await app.send_group_message(group, MessageChain([

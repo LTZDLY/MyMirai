@@ -285,12 +285,12 @@ async def private_msg(app, tcookie):
         fw.close()
 
     if msgs:
-        return bili_private_handler(app, msgs, tcookie)
+        return await bili_private_handler(app, msgs, tcookie)
 
     # print(len(msg), i['talker_id'])
 
 
-def bili_private_handler(app, msgs, tcookie):
+async def bili_private_handler(app, msgs, tcookie):
     headers = {"cookie": tcookie["cookie"]}
 
     url = f"https://api.vc.bilibili.com/account/v1/user/cards?uids={tcookie['uid']}"
@@ -347,7 +347,7 @@ def bili_private_handler(app, msgs, tcookie):
             msg_list.append(temp)
 
     print(msg_list)
-    img_list = draw_messages(msg_list)
+    img_list = await draw_messages(msg_list)
 
     fwd_nodeList = [
         ForwardNode(
@@ -361,8 +361,7 @@ def bili_private_handler(app, msgs, tcookie):
     ]
 
     for i in img_list:
-        img_bytes = BytesIO()
-        i.save(img_bytes, format="PNG")
+        i.save(img_bytes := BytesIO(), 'png')
         i.close()
         fwd_nodeList.append(
             ForwardNode(
