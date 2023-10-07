@@ -235,7 +235,10 @@ async def private_msg(app, tcookie):
 
     if not os.path.exists(Localpath):
         # 检测到文件不存在，首先进行初始化
-        await app.send_group_message(tcookie['group'], MessageChain([Plain(f"检测到{tcookie['name']}文件不存在，首先进行初始化")]))
+        await app.send_group_message(
+            tcookie["group"],
+            MessageChain([Plain(f"检测到{tcookie['name']}文件不存在，首先进行初始化")]),
+        )
         await private_msg_init(app, tcookie)
         return
 
@@ -254,6 +257,7 @@ async def private_msg(app, tcookie):
 
     # 然后访问这个地址，获取所有会话人的会话信息。
     msgs = {}
+    acc_info = {}
     for i in session_list:
         url = f'https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs?talker_id={i["talker_id"]}&session_type=1'
         r = requests.get(url, headers=headers)
@@ -267,7 +271,7 @@ async def private_msg(app, tcookie):
             if msg[0]["timestamp"] != bili_private[str(i["talker_id"])]:
                 tmsgs = []
                 for j in msg:
-                    if str(j["sender_uid"]) == str(tcookie['uid']):
+                    if str(j["sender_uid"]) == str(tcookie["uid"]):
                         tmsgs.append(j)
                     if not str(j["sender_uid"]) in bili_private:
                         continue
@@ -276,6 +280,8 @@ async def private_msg(app, tcookie):
                     else:
                         break
                 msgs[i["talker_id"]] = tmsgs
+                if "account_info" in i:
+                    acc_info[i["talker_id"]] = i["account_info"]
 
             bili_private[str(i["talker_id"])] = msg[0]["timestamp"]
 
@@ -285,19 +291,18 @@ async def private_msg(app, tcookie):
         fw.close()
 
     if msgs:
-        return await bili_private_handler(app, msgs, tcookie)
+        return await bili_private_handler(app, msgs, tcookie, acc_info)
 
     # print(len(msg), i['talker_id'])
 
 
-async def bili_private_handler(app, msgs, tcookie):
+async def bili_private_handler(app, msgs, tcookie, acc_info=None):
     headers = {"cookie": tcookie["cookie"]}
 
     url = f"https://api.vc.bilibili.com/account/v1/user/cards?uids={tcookie['uid']}"
     r = requests.get(url, headers=headers)
     if r.json()["code"] == 0:
         face = r.json()["data"][0]
-    
 
     msg_list = []
     num_people = 0
@@ -305,44 +310,48 @@ async def bili_private_handler(app, msgs, tcookie):
     for i in msgs:
         num_people += 1
         temp = {}
-        temp['myface'] = face["face"]
+        temp["myface"] = face["face"]
         # 访问这个地址，获取会话人的个人信息
-        url = f"https://api.vc.bilibili.com/account/v1/user/cards?uids={i}"
-        r = requests.get(url, headers=headers)
-        if r.json()["code"] == 0:
-            if not r.json()["data"]:
-                continue
-            data = r.json()["data"][0]
-            temp["name"] = data["name"]
-            temp["face"] = data["face"]
-            ttemp = []
-            tmsgs = msgs[i]
-            for j in tmsgs:
-                tttemp = {}
-                if j['sender_uid'] == tcookie['uid']:
-                    tttemp["sender"] = 1
-                tttemp["time"] = time.strftime(
-                    "%Y-%m-%d %H:%M:%S", time.localtime(j["timestamp"])
-                )
-                num_message += 1
-                if j["msg_type"] == 1:
-                    tttemp["type"] = "text"
-                    tttemp["content"] = json.loads(j["content"])
-                elif j["msg_type"] == 2:
-                    tttemp["type"] = "img"
-                    tttemp["content"] = json.loads(j["content"])
-                elif j["msg_type"] == 7:
-                    tttemp["type"] = "video"
-                    tttemp["content"] = json.loads(j["content"])
-                else:
-                    tttemp["type"] = "unknow"
-                    tttemp["content"] = {"content": "[不支持的消息类型]"}
-                ttemp.append(tttemp)
-            temp["msgs"] = ttemp
+        if acc_info and i in acc_info:
+            temp["name"] = acc_info[i]["name"]
+            temp["face"] = acc_info[i]["pic_url"]
+        else:
+            url = f"https://api.vc.bilibili.com/account/v1/user/cards?uids={i}"
+            r = requests.get(url, headers=headers)
+            if r.json()["code"] == 0:
+                if not r.json()["data"]:
+                    continue
+                data = r.json()["data"][0]
+                temp["name"] = data["name"]
+                temp["face"] = data["face"]
+        ttemp = []
+        tmsgs = msgs[i]
+        for j in tmsgs:
+            tttemp = {}
+            if j["sender_uid"] == tcookie["uid"]:
+                tttemp["sender"] = 1
+            tttemp["time"] = time.strftime(
+                "%Y-%m-%d %H:%M:%S", time.localtime(j["timestamp"])
+            )
+            num_message += 1
+            if j["msg_type"] == 1:
+                tttemp["type"] = "text"
+                tttemp["content"] = json.loads(j["content"])
+            elif j["msg_type"] == 2:
+                tttemp["type"] = "img"
+                tttemp["content"] = json.loads(j["content"])
+            elif j["msg_type"] == 7:
+                tttemp["type"] = "video"
+                tttemp["content"] = json.loads(j["content"])
+            else:
+                tttemp["type"] = "unknow"
+                tttemp["content"] = {"content": "[不支持的消息类型]"}
+            ttemp.append(tttemp)
+        temp["msgs"] = ttemp
 
-            # msg = r.json()['data']['messages']
-            # print(len(msg), i['talker_id'])
-            pass
+        # msg = r.json()['data']['messages']
+        # print(len(msg), i['talker_id'])
+        pass
         if temp:
             msg_list.append(temp)
 
@@ -355,13 +364,13 @@ async def bili_private_handler(app, msgs, tcookie):
             senderName="我",
             time=datetime.datetime.now(),
             message=MessageChain(
-                [Plain(f"拉取消息结束，本次共拉取了{num_people}个人的共{num_message}条消息。")]
+                [Plain(f"拉取消息结束，本次为{tcookie['name']}拉取了{num_people}个人的共{num_message}条消息。")]
             ),
         )
     ]
 
     for i in img_list:
-        i.save(img_bytes := BytesIO(), 'png')
+        i.save(img_bytes := BytesIO(), "png")
         i.close()
         fwd_nodeList.append(
             ForwardNode(

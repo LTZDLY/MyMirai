@@ -3,11 +3,13 @@ import traceback
 from graia.ariadne.app import Ariadne
 from graia.ariadne.entry import Friend, Member
 from graia.ariadne.event.message import FriendMessage, TempMessage
-from graia.ariadne.event.mirai import (BotInvitedJoinGroupRequestEvent,
-                                       NewFriendRequestEvent)
+from graia.ariadne.event.mirai import (
+    BotInvitedJoinGroupRequestEvent,
+    NewFriendRequestEvent,
+)
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
-from graia.ariadne.message.parser.base import MatchContent
+from graia.ariadne.message.parser.base import MatchContent, DetectPrefix
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
@@ -69,7 +71,7 @@ async def new_friend_handler(app: Ariadne, event: NewFriendRequestEvent):
 )
 async def forward_listener(app: Ariadne, message: MessageChain, friend: Friend):
     message_a = MessageChain([Plain("%s(%d)发送消息：\n" % (friend.nickname, friend.id))])
-    message_a.extend(message.asSendable())
+    message_a.extend(message.as_sendable())
     await app.send_friend_message(hostqq, message_a)
 
 
@@ -80,8 +82,17 @@ async def friend_message_handler(app: Ariadne, friend: Friend):
     await app.send_friend_message(friend, MessageChain([Plain("切噜~♪")]))
 
 
+@channel.use(
+    ListenerSchema(listening_events=[FriendMessage], decorators=[DetectPrefix("echo ")])
+)
+async def _(app: Ariadne, friend: Friend, message: MessageChain):
+    message_a = message
+    message_a.__root__[1].text = message_a.__root__[1].text.replace("echo ", "", 1)
+    await app.send_friend_message(friend, message_a.as_sendable())
+
+
 @channel.use(ListenerSchema(listening_events=[TempMessage]))
 async def temp_message_handler(app: Ariadne, message: MessageChain, sender: Member):
     message_a = MessageChain([Plain("%s(%d)向您发送消息：\n" % (sender.name, sender.id))])
-    message_a.extend(message.asSendable())
+    message_a.extend(message.as_sendable())
     await app.send_friend_message(hostqq, message_a)

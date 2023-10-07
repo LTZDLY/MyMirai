@@ -56,7 +56,7 @@ async def repeat(app):
 
 async def reminder(app, group: int, message: MessageChain, d: datetime.timedelta):
     await asyncio.sleep(d.total_seconds())
-    await app.send_group_message(group, message.asSendable())
+    await app.send_group_message(group, message.as_sendable())
 
 
 async def remindme(app, group: int, member: int, message: MessageChain):
@@ -129,9 +129,9 @@ async def remindme(app, group: int, member: int, message: MessageChain):
     if rep == '':
         return
     asyncio.create_task(
-        reminder(app, group, message_a.extend(message).asSendable(), d))
+        reminder(app, group, message_a.extend(message).as_sendable(), d))
     message_b = MessageChain([Plain('切噜~♪将在' + rep + '后提醒你：\n')])
-    await app.send_group_message(group, message_b.extend(message).asSendable())
+    await app.send_group_message(group, message_b.extend(message).as_sendable())
 
 # async def domytask(mytasks: dict):
 #     for i in mytasks:

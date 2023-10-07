@@ -51,7 +51,7 @@ async def callme_listener(
             )
         ]
     )
-    message_b = message.asSendable()
+    message_b = message.as_sendable()
     message_a.extend(message_b)
     for i in message_a.__root__:
         if i.type == "At":
@@ -115,6 +115,7 @@ async def bili_message_handler(
             member.id == hostqq
             or group.id == 617990957
             or group.id == 769641176
+            or group.id == 642027673
             and message.display.startswith("bilibili")
         ):
             await bilibili.bilibili_group(app, mytasks, group, message.display)
@@ -357,7 +358,7 @@ async def group_message_handler(
             flag = random.randint(0, 99)
             num = random.randint(5, 94)
             if abs(flag - num) <= 5:
-                await app.send_group_message(group, message.asSendable())
+                await app.send_group_message(group, message.as_sendable())
 
         # TODO 实装通过bigfun实现的会战信息查询系统
         if int(
@@ -657,7 +658,7 @@ async def group_message_handler(
             message_a.__root__[1].text = message_a.__root__[1].text.replace(
                 "echo ", "", 1
             )
-            await app.send_group_message(group, message_a.asSendable())
+            await app.send_group_message(group, message_a.as_sendable())
 
         if message.display.find("后提醒我") != -1:
             await repeat.remindme(app, group.id, member.id, message.copy())
@@ -945,7 +946,7 @@ async def group_message_handler(
                     await mute.set_mute(app, group, [member.id], 600)
                 except:
                     pass
-            await app.send_group_message(group, message.asSendable())
+            await app.send_group_message(group, message.as_sendable())
 
         pattern = re.compile(r"异.*世.*相.*遇.*尽.*享.*美.*味.*")
         if pattern.search(message.display) is not None:

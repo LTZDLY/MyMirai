@@ -31,7 +31,7 @@ async def priv_get(app):
             s += 'id=' + str(num + i) + '  ' + \
                 l[num + i].name + '(' + str(l[num + i].id) + ')'
         print(s)
-        await app.sendFriendMessage(hostqq, MessageChain([Plain(s)]))
+        await app.send_friend_message(hostqq, MessageChain([Plain(s)]))
         num += n
         s = ''
 
@@ -43,15 +43,15 @@ async def priv_se(app, message: MessageChain):
     if (len(ss) != 3):
         return
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('id错误')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain('id错误')]))
         return
     msga = message
     msga.__root__[1].text = msga.__root__[1].text.split(' ')[2]
     try:
-        await app.send_group_message(l[int(ss[1])], msga.asSendable())
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('发送成功')]))
+        await app.send_group_message(l[int(ss[1])], msga.as_sendable())
+        await app.send_friend_message(hostqq, MessageChain([Plain('发送成功')]))
     except:
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('发送失败')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain('发送失败')]))
 
 
 async def priv_mute(app, message: MessageChain):
@@ -61,32 +61,32 @@ async def priv_mute(app, message: MessageChain):
     if (len(ss) != 4):
         return
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('id错误')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain('id错误')]))
         return
     mem = int(ss[2])
     t = float(ss[3])
     try:
         await set_mute(app, l[int(ss[1])], [mem], t)
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('操作成功')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain('操作成功')]))
     except:
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('操作失败')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain('操作失败')]))
 
 
 async def priv_toqq(app, message: MessageChain):
-    ss = message.display.split(' ')
+    ss = message.display.split(' ', 2)
     if (len(ss) != 3):
         return
     msga = message
-    msga.__root__[1].text = msga.__root__[1].text.split(' ')[2]
+    msga.__root__[1].text = msga.__root__[1].text.split(' ', 2)[2]
     try:
-        await app.sendFriendMessage(int(ss[1]), msga.asSendable())
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('发送成功')]))
+        await app.send_friend_message(int(ss[1]), msga.as_sendable())
+        await app.send_friend_message(hostqq, MessageChain([Plain('发送成功')]))
     except:
         try:
-            await app.sendTempMessage(int(ss[1]), msga.asSendable())
-            await app.sendFriendMessage(hostqq, MessageChain([Plain('发送成功')]))
+            await app.sendTempMessage(int(ss[1]), msga.as_sendable())
+            await app.send_friend_message(hostqq, MessageChain([Plain('发送成功')]))
         except:
-            await app.sendFriendMessage(hostqq, MessageChain([Plain('发送失败')]))
+            await app.send_friend_message(hostqq, MessageChain([Plain('发送失败')]))
 
 
 async def priv_switch(app, message: MessageChain):
@@ -97,17 +97,17 @@ async def priv_switch(app, message: MessageChain):
     l = await app.getGroupList()
     l.sort(key=takeSecond)
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
-        await app.sendFriendMessage(hostqq, MessageChain([Plain('id错误')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain('id错误')]))
         return
     switch = ss[2]
     if switch == 'on':
         write_in_ini('data/switch.ini', str(l[int(ss[1])].id), 'on', '1')
-        await app.sendFriendMessage(hostqq, MessageChain([Plain(f'启用切噜在{l[int(ss[1])].name}')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain(f'启用切噜在{l[int(ss[1])].name}')]))
     elif switch == 'off':
         write_in_ini('data/switch.ini', str(l[int(ss[1])].id), 'on', '0')
-        await app.sendFriendMessage(hostqq, MessageChain([Plain(f'关闭切噜在{l[int(ss[1])].name}')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain(f'关闭切噜在{l[int(ss[1])].name}')]))
     elif switch == 'quit':
-        await app.sendFriendMessage(hostqq, MessageChain([Plain(f'退出切噜在{l[int(ss[1])].name}')]))
+        await app.send_friend_message(hostqq, MessageChain([Plain(f'退出切噜在{l[int(ss[1])].name}')]))
         await app.quit_group(l[int(ss[1])])
 
 
@@ -126,13 +126,13 @@ async def priv_find(app, message: MessageChain):
             s += 'id=' + str(i) + '  ' + \
                 l[i].name + '(' + str(l[i].id) + ')'
     print(s)
-    await app.sendFriendMessage(hostqq, MessageChain([Plain(s)]))
+    await app.send_friend_message(hostqq, MessageChain([Plain(s)]))
 
 
 async def priv_set(app, message: MessageChain):
     ss = message.display.split(' ', 3)
     if (len(ss) < 4):
-        await app.sendFriendMessage(hostqq, MessageChain([Plain("set需要3个参数：set [群组] [键] [值]")]))
+        await app.send_friend_message(hostqq, MessageChain([Plain("set需要3个参数：set [群组] [键] [值]")]))
         return
     # 键可以的取值为 group代表私聊消息的群号，bili_jct和SESSDATA代表cookis，switch代表开启关闭
     group = ss[1]
@@ -145,7 +145,7 @@ async def priv_set(app, message: MessageChain):
 
     if not group in cookies:
         # 群组不是之前保存过的任何群组，执行初始化群组函数。
-        await app.sendFriendMessage(hostqq, MessageChain([Plain("并没有保存这个群组，现在进行添加。")]))
+        await app.send_friend_message(hostqq, MessageChain([Plain("并没有保存这个群组，现在进行添加。")]))
         # 初始化
 
     if key.lower() == 'group':
@@ -170,7 +170,7 @@ async def priv_set(app, message: MessageChain):
         jsObj = json.dumps(cookies)
         fw.write(jsObj)
         fw.close()
-    await app.sendFriendMessage(hostqq, MessageChain([Plain(f"更改群组{group}的{key}为{value}完成。")]))
+    await app.send_friend_message(hostqq, MessageChain([Plain(f"更改群组{group}的{key}为{value}完成。")]))
 
 
 
