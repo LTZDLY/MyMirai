@@ -15,7 +15,7 @@ from watchdog.observers import Observer
 
 app = Ariadne(
     connection=config(
-        948153351,  # 你的机器人的 qq 号
+        1424912867,  # 你的机器人的 qq 号
         "LLSShinoai",  # 填入你的 mirai-api-http 配置中的 verifyKey
         # 以下两行（不含注释）里的 host 参数的地址
         # 是你的 mirai-api-http 地址中的地址与端口

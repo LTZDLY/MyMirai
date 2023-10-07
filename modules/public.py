@@ -75,7 +75,7 @@ async def switch_listener(
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
-        decorators=[MatchContent("切噜"), decorators.check_group()],
+        decorators=[MatchContent("切噜"), decorators.check_group(), decorators.check_ban()],
     )
 )
 async def cheru(app: Ariadne, group: Group, member: Member):
@@ -936,7 +936,7 @@ async def group_message_handler(
                 return
             flag = 0
             for at in message.get(At):
-                if at.target == 948153351:
+                if at.target == 1424912867:
                     at.target = member.id
                     flag = 1
             if flag == 0:

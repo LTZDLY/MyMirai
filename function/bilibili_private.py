@@ -1,9 +1,10 @@
 from io import BytesIO
 
 import requests
-from graia.ariadne.util.async_exec import cpu_bound
 from PIL import Image as Img
 from PIL import ImageDraw, ImageFilter, ImageFont
+
+from graia.ariadne.util.async_exec import cpu_bound
 
 TABLE_WIDTH = 4
 MASSAGE_WIDTH = 1500
