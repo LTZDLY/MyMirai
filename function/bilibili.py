@@ -13,6 +13,7 @@ from function.bilibili_private import draw_messages
 from function.bilibili_qrlogin import bilibili_qrlogin
 from function.data import gravity_bili_jct, gravity_cookie
 
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
 table = "fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF"
 tr = {}
 for i in range(58):
@@ -37,6 +38,7 @@ async def sign(app, group):
         fr.close()
     url = "https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign"
     headers = {
+        "user-Agent": user_agent,
         "cookie": data["shinoai"]["cookie"],
         "room_id": "330091",
         "csrf_token": data["shinoai"]["bili_jct"],
@@ -64,7 +66,7 @@ async def get(app, group):
         data = json.load(fr)
         fr.close()
     url = "https://api.live.bilibili.com/room/v1/Room/startLive"
-    headers = {"cookie": data["shinoai"]["cookie"]}
+    headers = {"user-Agent": user_agent, "cookie": data["shinoai"]["cookie"]}
     data = {
         "room_id": "330091",
         "csrf_token": data["shinoai"]["bili_jct"],
@@ -73,16 +75,19 @@ async def get(app, group):
         "platform": "pc",
     }
     r = requests.post(url, data, headers=headers)
-    addr = r.json()["data"]["rtmp"]["addr"]
-    code = r.json()["data"]["rtmp"]["code"]
-    if r.json()["data"]["status"] == "LIVE":
-        await app.sendFriendMessage(349468958, MessageChain([Plain(addr)]))
-        await app.sendFriendMessage(349468958, MessageChain([Plain(code)]))
-        await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
+    if r.json()["code"] != 0:
+        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
     else:
-        await app.send_group_message(
-            group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")])
-        )
+        addr = r.json()["data"]["rtmp"]["addr"]
+        code = r.json()["data"]["rtmp"]["code"]
+        if r.json()["data"]["status"] == "LIVE":
+            await app.send_friend_message(349468958, MessageChain([Plain(addr)]))
+            await app.send_friend_message(349468958, MessageChain([Plain(code)]))
+            await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
+        else:
+            await app.send_group_message(
+                group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")])
+            )
 
 
 async def end(app, group):
@@ -92,7 +97,7 @@ async def end(app, group):
         data = json.load(fr)
         fr.close()
     url = "https://api.live.bilibili.com/room/v1/Room/stopLive"
-    headers = {"cookie": data["shinoai"]["cookie"]}
+    headers = {"user-Agent": user_agent, "cookie": data["shinoai"]["cookie"]}
     data = {
         "room_id": "330091",
         "csrf_token": data["shinoai"]["bili_jct"],
@@ -100,8 +105,11 @@ async def end(app, group):
         "platform": "pc",
     }
     r = requests.post(url, data, headers=headers)
-    if r.json()["data"]["status"] == "PREPARING":
-        await app.send_group_message(group, MessageChain([Plain("直播间关闭成功")]))
+    if r.json()["code"] != 0:
+        await app.send_group_message(group, MessageChain([Plain(r.json()["messages"])]))
+    else:
+        if r.json()["data"]["status"] == "PREPARING":
+            await app.send_group_message(group, MessageChain([Plain("直播间关闭成功")]))
 
 
 async def change(app, group, msg: str):
@@ -121,7 +129,7 @@ async def change(app, group, msg: str):
         title = title + " " + text[i]
 
     url = "https://api.live.bilibili.com/room/v1/Room/update"
-    headers = {"cookie": data["shinoai"]["cookie"]}
+    headers = {"user-Agent": user_agent, "cookie": data["shinoai"]["cookie"]}
     data = {
         "room_id": "330091",
         "csrf_token": data["shinoai"]["bili_jct"],
@@ -157,7 +165,7 @@ async def triple(app, group, msg: str):
         av = dec(text[1])
 
     url = " https://api.bilibili.com/x/web-interface/archive/like/triple"
-    headers = {"cookie": data["shinoai"]["cookie"]}
+    headers = {"user-Agent": user_agent, "cookie": data["shinoai"]["cookie"]}
     data = {"csrf": data["shinoai"]["bili_jct"], "aid": av}
     r = requests.post(url, data, headers=headers)
     if r.json()["code"] == 0:
@@ -176,7 +184,7 @@ async def private_msg_init(app, tcookie):
     # await app.send_group_message(tcookie['group'], MessageChain([Plain(f"检测到{tcookie['name']}文件不存在，首先进行初始化")]))
 
     bili_private = {}
-    headers = {"cookie": tcookie["cookie"]}
+    headers = {"user-Agent": user_agent, "cookie": tcookie["cookie"]}
     # 首先访问这个地址，获取所有的会话信息。
     url = "https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?session_type=1&size=200"
     r = requests.get(url, headers=headers)
@@ -246,7 +254,7 @@ async def private_msg(app, tcookie):
         bili_private = json.load(fp)
 
     # print(bili_private)
-    headers = {"cookie": tcookie["cookie"]}
+    headers = {"user-Agent": user_agent, "cookie": tcookie["cookie"]}
     # 首先访问这个地址，获取所有的会话信息。
     url = "https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?session_type=1&size=10"
     r = requests.get(url, headers=headers)
@@ -297,7 +305,7 @@ async def private_msg(app, tcookie):
 
 
 async def bili_private_handler(app, msgs, tcookie, acc_info=None):
-    headers = {"cookie": tcookie["cookie"]}
+    headers = {"user-Agent": user_agent, "cookie": tcookie["cookie"]}
 
     url = f"https://api.vc.bilibili.com/account/v1/user/cards?uids={tcookie['uid']}"
     r = requests.get(url, headers=headers)
@@ -364,7 +372,11 @@ async def bili_private_handler(app, msgs, tcookie, acc_info=None):
             senderName="我",
             time=datetime.datetime.now(),
             message=MessageChain(
-                [Plain(f"拉取消息结束，本次为{tcookie['name']}拉取了{num_people}个人的共{num_message}条消息。")]
+                [
+                    Plain(
+                        f"拉取消息结束，本次为{tcookie['name']}拉取了{num_people}个人的共{num_message}条消息。"
+                    )
+                ]
             ),
         )
     ]
@@ -465,7 +477,7 @@ async def bilibili_group(app, mytasks, group, msg: str):
 
 async def get_gravity(app, group, member):
     url = "https://api.live.bilibili.com/room/v1/Room/startLive"
-    headers = {"cookie": gravity_cookie}
+    headers = {"user-Agent": user_agent, "cookie": gravity_cookie}
     data = {
         "room_id": "1925638",
         "csrf_token": gravity_bili_jct,
@@ -474,21 +486,24 @@ async def get_gravity(app, group, member):
         "platform": "pc",
     }  # 255代表明日方舟分区
     r = requests.post(url, data, headers=headers)
-    addr = r.json()["data"]["rtmp"]["addr"]
-    code = r.json()["data"]["rtmp"]["code"]
-    if r.json()["data"]["status"] == "LIVE":
-        await app.sendFriendMessage(member, MessageChain([Plain(addr)]))
-        await app.sendFriendMessage(member, MessageChain([Plain(code)]))
-        await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
+    if r.json()["code"] != 0:
+        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
     else:
-        await app.send_group_message(
-            group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")])
-        )
+        addr = r.json()["data"]["rtmp"]["addr"]
+        code = r.json()["data"]["rtmp"]["code"]
+        if r.json()["data"]["status"] == "LIVE":
+            await app.send_friend_message(member, MessageChain([Plain(addr)]))
+            await app.send_friend_message(member, MessageChain([Plain(code)]))
+            await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
+        else:
+            await app.send_group_message(
+                group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")])
+            )
 
 
 async def end_gravity(app, group):
     url = "https://api.live.bilibili.com/room/v1/Room/stopLive"
-    headers = {"cookie": gravity_cookie}
+    headers = {"user-Agent": user_agent, "cookie": gravity_cookie}
     data = {
         "room_id": "1925638",
         "csrf_token": gravity_bili_jct,
@@ -509,7 +524,7 @@ async def change_gravity(app, group, msg: str):
         await app.send_group_message(group, MessageChain([Plain("标题过长，请更改")]))
         return
     url = "https://api.live.bilibili.com/room/v1/Room/update"
-    headers = {"cookie": gravity_cookie}
+    headers = {"user-Agent": user_agent, "cookie": gravity_cookie}
     data = {
         "room_id": "1925638",
         "csrf_token": gravity_bili_jct,

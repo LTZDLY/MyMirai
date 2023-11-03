@@ -11,8 +11,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.entry import Group, Member
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import (At, Forward, ForwardNode, Image,
-                                           Plain, Voice)
+from graia.ariadne.message.element import At, Forward, ForwardNode, Image, Plain, Voice
 from graia.ariadne.message.parser.base import DetectPrefix, MatchContent
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -75,7 +74,11 @@ async def switch_listener(
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
-        decorators=[MatchContent("切噜"), decorators.check_group(), decorators.check_ban()],
+        decorators=[
+            MatchContent("切噜"),
+            decorators.check_group(),
+            decorators.check_ban(),
+        ],
     )
 )
 async def cheru(app: Ariadne, group: Group, member: Member):
@@ -189,51 +192,49 @@ async def group_message_handler(
         # help模块不支持转义
         if message.display == "help":
             sstr = (
-                "功能列表："
-                + "\n目前可以公开使用的模块有："
-                + "\n切噜语加密/解密：切噜语模块"
-                + "\npcr：pcr模块"
-                + "\npcrteam：pcr团队战模块"
-                + "\n天气：天气模块"
-                + "\n来点：图库模块"
-                + "\nmute：禁言模块"
-                + "\n订阅直播：b站直播间订阅模块"
-                + "\n不可以公开使用的模块有："
-                + "\nbilibili：bilibili模块"
-                + "\ncanvas：canvas模块"
-                + "\ndanmaku：弹幕姬模块"
-                + "\nswitch：开关模块"
-                + "\ndefine：转义模块"
-                + "\ntimer：报时模块"
+                "基础功能列表："
+                + "\n切噜语[加密/解密] <需要加密/解密的句子>"
+                + "\n(今日/明日/昨日/[0-7]日)天气 <地点>：查询某地某日天气"
+                + "\n订阅直播 <B站直播间号>"
+                + "\n取消订阅 <B站直播间号>"
+                + "\n查询直播间 <B站直播间号>：查询某个B站直播间的直播状态"
+                + "\n今日老婆：在群里为你匹配今日老婆"
+                + "\n今日cp：查询本群已进行匹配的老婆们"
+                + "\n群老婆：匹配本群老婆"
+                + "\n运势：查询今日运势"
+                + "\n选择(N) <选项1> [选项2] ... [选项M]"
+                + "\necho <内容>"
+                + "\nexpand <缩写>：查询缩写对应的有可能的中文"
+                + "\n今天[吃啥/干啥/玩啥]"
             )
             await app.send_group_message(group, MessageChain([Plain(sstr)]))
             return
-        if message.display.startswith("help "):
-            text = message.display.split(" ")
-            if len(text) != 2:
-                return
-            sstr = ""
-            if text[1] == "canvas":
-                sstr = (
-                    "canvas模块：校内专用与canvas进行对接"
-                    + "\n目前具有的指令如下："
-                    + "\ncanvas.todo：获取当前未完成的所有ddl"
-                    + "\ncanvas.todo.finish：获取当前所有ddl，包括已完成"
-                    + "\ncanvas.todo.add 日期 标题：在日期的时间上添加名为标题的ddl"
-                    + "\ncanvas.todo.del 标题：删除找到的第一个符合该标题的ddl"
-                )
-            if text[1] == "bilibili":
-                sstr = (
-                    "bilibili模块：私人专用"
-                    + "\n目前具有的指令如下："
-                    + "\nbilibili.signup：b站直播中心每日签到"
-                    + "\nbilibili.get：开启直播间并获得推流码，直播默认分区单机联机"
-                    + "\nbilibili.end：关闭直播间"
-                    + "\nbilibili.change 标题：更改直播间标题"
-                    + "\nbilibili.triple AV号/BV号：三连视频"
-                )
-            if sstr != "":
-                await app.send_group_message(group, MessageChain([Plain(sstr)]))
+        # if message.display.startswith("help "):
+        #     text = message.display.split(" ")
+        #     if len(text) != 2:
+        #         return
+        #     sstr = ""
+        #     if text[1] == "canvas":
+        #         sstr = (
+        #             "canvas模块：校内专用与canvas进行对接"
+        #             + "\n目前具有的指令如下："
+        #             + "\ncanvas.todo：获取当前未完成的所有ddl"
+        #             + "\ncanvas.todo.finish：获取当前所有ddl，包括已完成"
+        #             + "\ncanvas.todo.add 日期 标题：在日期的时间上添加名为标题的ddl"
+        #             + "\ncanvas.todo.del 标题：删除找到的第一个符合该标题的ddl"
+        #         )
+        #     if text[1] == "bilibili":
+        #         sstr = (
+        #             "bilibili模块：私人专用"
+        #             + "\n目前具有的指令如下："
+        #             + "\nbilibili.signup：b站直播中心每日签到"
+        #             + "\nbilibili.get：开启直播间并获得推流码，直播默认分区单机联机"
+        #             + "\nbilibili.end：关闭直播间"
+        #             + "\nbilibili.change 标题：更改直播间标题"
+        #             + "\nbilibili.triple AV号/BV号：三连视频"
+        #         )
+        #     if sstr != "":
+        #         await app.send_group_message(group, MessageChain([Plain(sstr)]))
 
         # # FIXME 用户向bot提供学号和密码用于登录canvas爬取数据
         # if message.display.startswith("canvas.apply"):
