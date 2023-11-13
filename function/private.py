@@ -14,7 +14,7 @@ def takeSecond(elem):
 
 
 async def priv_get(app):
-    l = list(await app.getGroupList())
+    l = list(await app.get_group_list())
     l.sort(key=takeSecond)
     s = '获取群列表：'
     m = len(l)
@@ -37,7 +37,7 @@ async def priv_get(app):
 
 
 async def priv_se(app, message: MessageChain):
-    l = await app.getGroupList()
+    l = await app.get_group_list()
     l.sort(key=takeSecond)
     ss = message.display.split(' ')
     if (len(ss) != 3):
@@ -46,7 +46,7 @@ async def priv_se(app, message: MessageChain):
         await app.send_friend_message(hostqq, MessageChain([Plain('id错误')]))
         return
     msga = message
-    msga.__root__[1].text = msga.__root__[1].text.split(' ')[2]
+    msga.__root__[0].text = msga.__root__[0].text.split(' ')[2]
     try:
         await app.send_group_message(l[int(ss[1])], msga.as_sendable())
         await app.send_friend_message(hostqq, MessageChain([Plain('发送成功')]))
@@ -55,7 +55,7 @@ async def priv_se(app, message: MessageChain):
 
 
 async def priv_mute(app, message: MessageChain):
-    l = await app.getGroupList()
+    l = await app.get_group_list()
     l.sort(key=takeSecond)
     ss = message.display.split(' ')
     if (len(ss) != 4):
@@ -77,7 +77,7 @@ async def priv_toqq(app, message: MessageChain):
     if (len(ss) != 3):
         return
     msga = message
-    msga.__root__[1].text = msga.__root__[1].text.split(' ', 2)[2]
+    msga.__root__[0].text = msga.__root__[0].text.split(' ', 2)[2]
     try:
         await app.send_friend_message(int(ss[1]), msga.as_sendable())
         await app.send_friend_message(hostqq, MessageChain([Plain('发送成功')]))
@@ -94,7 +94,7 @@ async def priv_switch(app, message: MessageChain):
     ss = message.display.split(' ')
     if (len(ss) != 3):
         return
-    l = await app.getGroupList()
+    l = await app.get_group_list()
     l.sort(key=takeSecond)
     if (int(ss[1]) < 0 or int(ss[1]) > len(l) - 1):
         await app.send_friend_message(hostqq, MessageChain([Plain('id错误')]))
@@ -116,7 +116,7 @@ async def priv_find(app, message: MessageChain):
     ss = message.display.split(' ', 1)
     if (len(ss) < 2):
         return
-    l = list(await app.getGroupList())
+    l = list(await app.get_group_list())
     l.sort(key=takeSecond)
     s = '获取群列表：'
     for i in range(len(l)):

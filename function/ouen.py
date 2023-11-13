@@ -6,22 +6,21 @@ from graia.ariadne.message.element import Image
 
 
 async def ouen(app, txt: str, group):
-    add = "simhei.ttf"
-    img = Img.open('./source/4.png')
+    MYFONT = r"./source/font/simhei.ttf"
+    img = Img.open("./source/4.png")
     # 控制表情的叠加位置
     draw = ImageDraw.Draw(img)
 
     mask = img
-    s_background = Img.new(
-        "RGBA", (650, 650), (255, 255, 255, 0))  # alpha通道设为0，保证透明度
+    s_background = Img.new("RGBA", (650, 650), (255, 255, 255, 0))  # alpha通道设为0，保证透明度
     s_draw = ImageDraw.Draw(s_background)
 
-    size_max = int(320/len(txt)*2) + 1
-    size_min = int(320/len(txt)) - 1
+    size_max = int(320 / len(txt) * 2) + 1
+    size_min = int(320 / len(txt)) - 1
 
     # print(len(txt))
     if len(txt) == 1:
-        font = ImageFont.truetype(add, 180)
+        font = ImageFont.truetype(MYFONT, 180)
         text_size = draw.textsize(txt, font=font)
         # print(text_size)
         if abs(text_size[0] - 180) < 30:
@@ -29,7 +28,7 @@ async def ouen(app, txt: str, group):
         else:
             x, y = 225, 30
     elif len(txt) == 2:
-        font = ImageFont.truetype(add, 140)
+        font = ImageFont.truetype(MYFONT, 140)
         text_size = draw.textsize(txt, font=font)
         # print(text_size)
         if abs(text_size[0] - 280) < 20:
@@ -41,8 +40,7 @@ async def ouen(app, txt: str, group):
     else:
         x = 110
         for size in range(size_max, size_min, -1):
-
-            font = ImageFont.truetype(add, size)
+            font = ImageFont.truetype(MYFONT, size)
             text_size = draw.textsize(txt, font=font)
             # print(text_size)
             if text_size[0] > 320:
@@ -51,8 +49,11 @@ async def ouen(app, txt: str, group):
                 break
 
         s = text_size[1]
-        y = -0.0009077705156136529 * \
-            (pow(s, 2))-0.25326797385620914*s+105.27777777777777
+        y = (
+            -0.0009077705156136529 * (pow(s, 2))
+            - 0.25326797385620914 * s
+            + 105.27777777777777
+        )
         # print(y)
 
     s_draw.text((x, y), txt, fill=(0, 0, 0), font=font)
@@ -65,7 +66,7 @@ async def ouen(app, txt: str, group):
     out1.save(img_bytes := BytesIO(), format="PNG")
     out1.close()
 
-    await app.send_group_message(group, MessageChain([
-        Image(data_bytes=img_bytes.getvalue())
-    ]))
+    await app.send_group_message(
+        group, MessageChain([Image(data_bytes=img_bytes.getvalue())])
+    )
     img_bytes.close()

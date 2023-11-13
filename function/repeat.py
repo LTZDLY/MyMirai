@@ -63,7 +63,7 @@ async def remindme(app, group: int, member: int, message: MessageChain):
     message_a = MessageChain([At(member), Plain('\n')])
     message_a.__root__[0].display = ''
     try:
-        s = message.__root__[1].text
+        s = message.__root__[0].text
         text = s.split('后提醒我')
     except:
         return
@@ -74,7 +74,7 @@ async def remindme(app, group: int, member: int, message: MessageChain):
         t = text[1]
         for i in text[2:]:
             t += '后提醒我' + i
-        message.__root__[1].text = t
+        message.__root__[0].text = t
     day = hour = minute = second = 0
     text = text[0]
     if (text.find('天') != -1):

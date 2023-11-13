@@ -35,7 +35,7 @@ async def callme_listener(
     app: Ariadne, message: MessageChain, group: Group, member: Member
 ):
     # 监听事件永远最优先
-    if type(message.__root__[1]) == Forward:
+    if type(message.__root__[0]) == Forward:
         return
     for i in listen:
         if i in message.as_persistent_string():
@@ -169,9 +169,9 @@ async def group_message_handler(
         """
 
         if group.id not in rep:
-            rep[group.id] = [message.__root__[1:], 1]
+            rep[group.id] = [message.__root__[0:], 1]
         else:
-            message_a = message.__root__[1:]
+            message_a = message.__root__[0:]
             if rep[group.id][0] == message_a:
                 rep[group.id][1] += 1
             else:
@@ -355,6 +355,7 @@ async def group_message_handler(
             or message.display == "？"
             or message.display == "草"
             or message.display == "艹"
+            or message.display == "6"
         ):
             flag = random.randint(0, 99)
             num = random.randint(5, 94)
@@ -656,7 +657,7 @@ async def group_message_handler(
         # echo模块
         if msg.startswith("echo ") and msg != "echo ":
             message_a = message
-            message_a.__root__[1].text = message_a.__root__[1].text.replace(
+            message_a.__root__[0].text = message_a.__root__[0].text.replace(
                 "echo ", "", 1
             )
             await app.send_group_message(group, message_a.as_sendable())

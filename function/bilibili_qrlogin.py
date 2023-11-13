@@ -34,10 +34,11 @@ async def bilibili_qrlogin(app, group):
     session = requests.session()
 
     getlogin = session.get(
-        "https://passport.bilibili.com/qrcode/getLoginUrl", headers=headers
+        "https://passport.bilibili.com/x/passport-login/web/qrcode/generate",
+        headers=headers,
     ).json()
     loginurl = requests.get(getlogin["data"]["url"], headers=headers).url
-    oauthKey = getlogin["data"]["oauthKey"]
+    oauthKey = getlogin["data"]["qrcode_key"]
     qr = qrcode.QRCode()
     qr.add_data(loginurl)
     img = qr.make_image()
@@ -45,7 +46,7 @@ async def bilibili_qrlogin(app, group):
     png = img_bytes.getvalue()
     img_bytes.close()
     await app.send_group_message(group, MessageChain([Image(data_bytes=png)]))
-    tokenurl = "https://passport.bilibili.com/qrcode/getLoginInfo"
+    tokenurl = f"https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key={oauthKey}"
 
     # 轮询等待
     old_msg = ""
@@ -55,20 +56,14 @@ async def bilibili_qrlogin(app, group):
         if old_msg != msg:
             await app.send_group_message(group, MessageChain([Plain(msg)]))
             old_msg = msg
-        qrcodedata = session.post(
+        qrcodedata = session.get(
             tokenurl,
-            data={"oauthKey": oauthKey, "gourl": "https://www.bilibili.com/"},
+            data={"qrcode_key": oauthKey, "gourl": "https://www.bilibili.com/"},
             headers=headerss,
         ).json()
-        # msg = (qrcodedata)
-        if "-4" in str(qrcodedata["data"]):
-            msg = "等待扫码"
-        elif "-5" in str(qrcodedata["data"]):
-            msg = "已扫码"
-        elif "-2" in str(qrcodedata["data"]):
-            msg = "二维码过期，登录取消"
-            break
-        elif "True" in str(qrcodedata["status"]):
+        code = qrcodedata["data"]["code"]
+        msg = qrcodedata["data"]["message"]
+        if code == 0:
             msg = "登录成功，账号："
             f = True
             session.get(qrcodedata["data"]["url"], headers=headers)
@@ -82,8 +77,9 @@ async def bilibili_qrlogin(app, group):
                 uid = loginurl["data"]["mid"]
                 msg += f"\n{name}（{uid}）"
             break
-        else:
-            msg = f"其他：{str(qrcodedata)}"
+        elif code == 86038:
+            msg += "，登录已取消"
+            await app.send_group_message(group, MessageChain([Plain(msg)]))
             break
         await asyncio.sleep(2)
 
@@ -134,41 +130,36 @@ async def bilibili_qrlogin(app, group):
 
 #     if not status:
 #         getlogin = session.get(
-#             "https://passport.bilibili.com/qrcode/getLoginUrl", headers=headers
+#             "https://passport.bilibili.com/x/passport-login/web/qrcode/generate", headers=headers
 #         ).json()
 #         loginurl = requests.get(getlogin["data"]["url"], headers=headers).url
-#         oauthKey = getlogin["data"]["oauthKey"]
+#         oauthKey = getlogin["data"]["qrcode_key"]
 #         qr = qrcode.QRCode()
 #         qr.add_data(loginurl)
 #         img = qr.make_image()
-#         a = BytesIO()
-#         img.save(a, "png")
-#         png = a.getvalue()
-#         a.close()
+#         img.save(img_bytes := BytesIO(), "png")
+#         png = img_bytes.getvalue()
+#         img_bytes.close()
 #         t = showpng(png)
 #         t.start()
-#         tokenurl = "https://passport.bilibili.com/qrcode/getLoginInfo"
+#         tokenurl = f"https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key={oauthKey}"
 #         while 1:
-#             qrcodedata = session.post(
+#             qrcodedata = session.get(
 #                 tokenurl,
-#                 data={"oauthKey": oauthKey, "gourl": "https://www.bilibili.com/"},
+#                 data={"qrcode_key": oauthKey, "gourl": "https://www.bilibili.com/"},
 #                 headers=headerss,
-#             ).json()
+#             )
+#             print(qrcodedata.text)
+#             qrcodedata = qrcodedata.json()
 #             print(qrcodedata)
-#             if "-4" in str(qrcodedata["data"]):
-#                 print("二维码未失效，请扫码！")
-#             elif "-5" in str(qrcodedata["data"]):
-#                 print("已扫码，请确认！")
-#             elif "-2" in str(qrcodedata["data"]):
-#                 print("二维码已失效，请重新运行！")
-#             elif "True" in str(qrcodedata["status"]):
-#                 print("已确认，登入成功！")
+#             code = qrcodedata['data']['code']
+#             msg = qrcodedata['data']['message']
+#             if code == 0:
 #                 d = session.get(qrcodedata["data"]["url"], headers=headers)
 #                 print(d.text)
-
 #                 break
 #             else:
-#                 print("其他：", qrcodedata)
+#                 print(msg)
 #             time.sleep(2)
 #         session.cookies.save()
 #     return session

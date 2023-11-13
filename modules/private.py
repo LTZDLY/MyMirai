@@ -87,7 +87,7 @@ async def friend_message_handler(app: Ariadne, friend: Friend):
 )
 async def _(app: Ariadne, friend: Friend, message: MessageChain):
     message_a = message
-    message_a.__root__[1].text = message_a.__root__[1].text.replace("echo ", "", 1)
+    message_a.__root__[0].text = message_a.__root__[0].text.replace("echo ", "", 1)
     await app.send_friend_message(friend, message_a.as_sendable())
 
 
