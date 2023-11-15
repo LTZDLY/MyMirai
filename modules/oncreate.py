@@ -4,14 +4,18 @@ from functools import partial
 
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
-from graia.ariadne.event.mirai import (BotLeaveEventKick, BotMuteEvent,
-                                       MemberMuteEvent, MemberUnmuteEvent)
+from graia.ariadne.event.mirai import (
+    BotLeaveEventKick,
+    BotMuteEvent,
+    MemberMuteEvent,
+    MemberUnmuteEvent,
+)
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from function import bilibili, danmaku, ini, mute, repeat
+from function import bilibili, danmaku, ini, mute, repeat, switch
 from function.data import hostqq, live, mygroup, mytasks
 
 channel = Channel.current()
@@ -19,6 +23,7 @@ channel = Channel.current()
 
 @channel.use(ListenerSchema(listening_events=[MemberMuteEvent]))
 async def member_mute_handler(app: Ariadne, event: MemberMuteEvent):
+    return
     if (
         int(ini.read_from_ini("data/switch.ini", str(event.member.group.id), "on", "0"))
         == 0
@@ -27,7 +32,7 @@ async def member_mute_handler(app: Ariadne, event: MemberMuteEvent):
 
     if event.operator is None:
         return
-    sstr = mute.time_to_str(event.durationSeconds)
+    sstr = mute.time_to_str(event.duration)
     # print(sstr)
     message = MessageChain(
         [
@@ -44,11 +49,12 @@ async def member_mute_handler(app: Ariadne, event: MemberMuteEvent):
         ]
     )
     await app.send_group_message(event.member.group.id, message)
-    # print(MemberMuteEvent.durationSeconds)
+    # print(MemberMuteEvent.duration)
 
 
 @channel.use(ListenerSchema(listening_events=[MemberUnmuteEvent]))
 async def member_unmute_handler(app: Ariadne, event: MemberUnmuteEvent):
+    return
     if (
         int(ini.read_from_ini("data/switch.ini", str(event.member.group.id), "on", "0"))
         == 0
@@ -78,9 +84,12 @@ async def member_unmute_handler(app: Ariadne, event: MemberUnmuteEvent):
 async def bot_mute_handler(app: Ariadne, event: BotMuteEvent):
     if event.operator.id == hostqq:
         return
-    if event.durationSeconds <= 3600:
+    if event.duration <= 3600:
         return
     # TODO 黑名单系统
+    switch.addBlackList(event.operator.id)
+    switch.addBlackList(event.operator.group, 2)
+    await app.quit_group(event.operator.group)
     await app.send_group_message(
         mygroup,
         MessageChain(
@@ -92,18 +101,19 @@ async def bot_mute_handler(app: Ariadne, event: BotMuteEvent):
                         event.operator.group.id,
                         event.operator.name,
                         event.operator.id,
-                        mute.time_to_str(event.durationSeconds),
+                        mute.time_to_str(event.duration),
                     )
                 )
             ]
         ),
     )
-    await app.quit(event.operator.group)
 
 
 @channel.use(ListenerSchema(listening_events=[BotLeaveEventKick]))
 async def bot_kicked_hanler(app: Ariadne, event: BotLeaveEventKick):
     # TODO 黑名单系统
+    switch.addBlackList(event.operator.id)
+    switch.addBlackList(event.operator.group, 2)
     await app.send_group_message(
         mygroup,
         MessageChain(

@@ -17,9 +17,27 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax import silkcoder
 
-from function import (arknights, bilibili, cherugo, danmaku, decorators, image,
-                      ini, latex, leetcode, mute, ouen, pcr, permission,
-                      portune, repeat, signup, switch, todotree, weather)
+from function import (
+    arknights,
+    bilibili,
+    cherugo,
+    danmaku,
+    decorators,
+    image,
+    ini,
+    latex,
+    leetcode,
+    mute,
+    ouen,
+    pcr,
+    permission,
+    portune,
+    repeat,
+    signup,
+    switch,
+    todotree,
+    weather,
+)
 from function.data import bed, hostqq, listen, live, mygroup, mytasks, rep
 
 channel = Channel.current()
@@ -84,11 +102,11 @@ async def switch_listener(
 async def cheru(app: Ariadne, group: Group, member: Member):
     await app.send_group_message(group, MessageChain([Plain("切噜~♪")]))
 
-    filePath = "./source/audio/cheru/"
-    for i, j, k in os.walk(filePath):
-        file = filePath + k[random.randint(0, len(k) - 1)]
-    audio_bytes = await silkcoder.async_encode(file, ios_adaptive=True)
-    await app.send_group_message(group, MessageChain([Voice(data_bytes=audio_bytes)]))
+    # filePath = "./source/audio/cheru/"
+    # for i, j, k in os.walk(filePath):
+    #     file = filePath + k[random.randint(0, len(k) - 1)]
+    # audio_bytes = await silkcoder.async_encode(file, ios_adaptive=True)
+    # await app.send_group_message(group, MessageChain([Voice(data_bytes=audio_bytes)]))
 
 
 # @channel.use(ListenerSchema(listening_events=
@@ -177,7 +195,10 @@ async def group_message_handler(
             else:
                 rep[group.id] = [message_a, 1]
             if rep[group.id][1] == 3:
-                await app.send_group_message(group, MessageChain(message_a))
+                try:
+                    await app.send_group_message(group, MessageChain(message_a))
+                except Exception as e:
+                    traceback.print_exc()
 
         # bot 退群指令
         if member.id == hostqq and message.display == "\\withdraw":
@@ -186,7 +207,7 @@ async def group_message_handler(
                 await app.kick(group, member)
             except:
                 pass
-            await app.quit(group)
+            await app.quit_group(group)
             # TODO 将该群聊加入黑名单
 
         # help模块不支持转义
@@ -938,9 +959,18 @@ async def group_message_handler(
                 return
             flag = 0
             for at in message.get(At):
-                if at.target == 1424912867:
+                if at.target == app.account:
                     at.target = member.id
                     flag = 1
+                    now_minute = datetime.datetime.now().minute
+                    if not 'atme' in bed:
+                        bed['atme'] = {member.id: {now_minute: 1}}
+                    elif not member.id in bed['atme']:
+                        bed['atme'][member.id] = {now_minute: 1}
+                    elif not now_minute in bed['atme'][member.id]:
+                        bed['atme'][member.id] = {now_minute: 1}
+                    else:
+                        bed['atme'][member.id][now_minute] += 1
             if flag == 0:
                 return
             if message.display.find("/生日快乐") != -1:
@@ -949,6 +979,15 @@ async def group_message_handler(
                 except:
                     pass
             await app.send_group_message(group, message.as_sendable())
+            atme_times = bed['atme'][member.id][now_minute]
+            if atme_times >= 3:
+                switch.addBlackList(member.id)
+                await app.send_group_message(group, MessageChain([
+                    At(target=member), Plain(" 该用户频繁对bot进行骚扰，已自动拉黑")
+                ]))
+                await app.send_group_message(mygroup, MessageChain([
+                    Plain(f"{member.name}({member.id})在群{group.name}({group.id})中对bot频繁骚扰，已自动拉黑")
+                ]))
 
         pattern = re.compile(r"异.*世.*相.*遇.*尽.*享.*美.*味.*")
         if pattern.search(message.display) is not None:

@@ -8,7 +8,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from requests.sessions import Session
 
-from crack import crack_main, sm_2encrypt
+from function.crack import crack_main, sm_2encrypt
 
 
 def is_json(myjson):
@@ -498,6 +498,3 @@ async def courses(app, group, member, msg, s: Session):
 #     s = createlink(349468958)
 #     pass
 
-qq = 349468958
-a = ids_login(qq)
-a = ids_session(a, qq)

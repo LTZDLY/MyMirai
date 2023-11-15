@@ -13,7 +13,7 @@ from graia.ariadne.message.parser.base import MatchContent, DetectPrefix
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from function import decorators
+from function import decorators, permission
 from function.data import hostqq
 
 channel = Channel.current()
@@ -24,6 +24,21 @@ async def new_group_invited_handler(
     app: Ariadne, event: BotInvitedJoinGroupRequestEvent
 ):
     try:
+        if permission.inban(event.supplicant, event.source_group):
+            m = "检测到邀请人或群在黑名单中，已自动拒绝"
+            await event.reject(m)
+            await app.send_friend_message(
+                hostqq,
+                MessageChain(
+                    [
+                        Plain(
+                            f"{event.nickname}({event.supplicant})邀请加入群聊{event.group_name}({event.source_group})，{m}"
+                        )
+                    ]
+                ),
+            )
+            return
+
         await event.accept()
         if event.supplicant != hostqq:
             await app.send_friend_message(
@@ -46,6 +61,20 @@ async def new_group_invited_handler(
 @channel.use(ListenerSchema(listening_events=[NewFriendRequestEvent]))
 async def new_friend_handler(app: Ariadne, event: NewFriendRequestEvent):
     try:
+        if permission.inban(event.supplicant):
+            m = "检测到申请人在黑名单中，已自动拒绝"
+            await event.reject(m)
+            await app.send_friend_message(
+                hostqq,
+                MessageChain(
+                    [
+                        Plain(
+                            f"{event.nickname}({event.supplicant})申请好友，{m}。附加信息如下：\n{event.message}"
+                        )
+                    ]
+                ),
+            )
+            return
         await event.accept()
         await app.send_friend_message(
             hostqq,

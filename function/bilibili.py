@@ -190,6 +190,12 @@ async def private_msg_init(app, tcookie):
     r = requests.get(url, headers=headers)
     if r.json()["code"] == 0:
         session_list = r.json()["data"]["session_list"]
+    else:
+        await app.send_group_message(
+            tcookie["group"],
+            MessageChain([Plain(r.json()["message"])])
+        )
+        return
 
     # 然后访问这个地址，获取所有会话人的会话信息。
     for i in session_list:
