@@ -37,6 +37,7 @@ from function import (
     switch,
     todotree,
     weather,
+    compiler
 )
 from function.data import bed, hostqq, listen, live, mygroup, mytasks, rep
 
@@ -738,7 +739,7 @@ async def group_message_handler(
                     return
 
         # pcr运势模块
-        if message.display == "运势":
+        if False and message.display == "运势":
             t = datetime.datetime.now() - datetime.timedelta(hours=0)
             # 此处p是指运势
             if not "p" in bed:
@@ -751,7 +752,7 @@ async def group_message_handler(
             await portune.portune(app, group, member.id, bed["p"][member.id])
 
         # 今日老婆模块
-        if message.display == "今日老婆":
+        if False and message.display == "今日老婆":
             # 在bed中建立wife存储今日老婆
             if not "wife" in bed:
                 bed["wife"] = {}
@@ -772,8 +773,8 @@ async def group_message_handler(
                         n1.id == member.id or n1.id in bed["wife"][now.date()][group.id]
                     ):
                         n1 = random.choice(ms)
-                    bed["wife"][now.date()][group.id][n1.id] = member.id
                     bed["wife"][now.date()][group.id][member.id] = n1.id
+                    bed["wife"][now.date()][group.id][n1.id] = member.id
                 else:
                     n1 = await app.get_friend(app.account)
                     await app.send_group_message(
@@ -783,7 +784,7 @@ async def group_message_handler(
                                 At(member),
                                 Plain(" 群里没人能当你老婆了，那切噜就勉为其难的当你一天老婆吧！\n你今天的老婆是：\n"),
                                 Image(data_bytes=await n1.get_avatar(140)),
-                                Plain(f"\n{n1.nickname}（{n1.id}）"),
+                                Plain(f"\n{n1.name}（{n1.id}）"),
                             ]
                         ),
                     )
@@ -804,7 +805,7 @@ async def group_message_handler(
             )
 
         # 群老婆和群sabi
-        if msg == "群老婆":
+        if False and msg == "群老婆":
             # 在bed中建立allwife存储大家的老婆
             if not "allwife" in bed:
                 bed["allwife"] = {}
@@ -831,6 +832,54 @@ async def group_message_handler(
                     ]
                 ),
             )
+
+        if False and message.display == "今日cp":
+            # 在bed中建立wife存储今日老婆
+            if not "wife" in bed:
+                bed["wife"] = {}
+            now = datetime.datetime.today()
+            add = datetime.timedelta(hours=0)
+            now -= add
+            # 如果换日，则清空
+            if not now.date() in bed["wife"]:
+                bed["wife"] = {}
+                bed["wife"][now.date()] = {}
+            if not group.id in bed["wife"][now.date()]:
+                bed["wife"][now.date()][group.id] = {}
+            groupcp = ""
+            cpdict = bed["wife"][now.date()][group.id]
+            cpset = set()
+            cplen = 0
+            for i in cpdict:
+                m1 = await app.get_member(group, i)
+                m2 = await app.get_member(group, cpdict[i])
+                if m1.id in cpset or m2.id in cpset:
+                    continue
+                cpset.add(m1.id)
+                cpset.add(m2.id)
+                temp = f"\n♥ {m1.name}({m1.id}) | {m2.name}({m2.id})"
+                groupcp += temp
+                cplen = max(cplen, len(temp))
+            if groupcp:
+                cpmsg = "本群CP：\n" + "-" * cplen
+                cpmsg += groupcp
+                await app.send_group_message(
+                    group,
+                    MessageChain(
+                        [
+                            Image(
+                                data_bytes=image.image_to_bytes(
+                                    image.text_to_image(cpmsg)
+                                ),
+                                encoding="utf-8",
+                            )
+                        ]
+                    ),
+                )
+            else:
+                await app.send_group_message(
+                    group, MessageChain([Plain("群里今天还没有cp呢，快发送今日老婆成为本群第一个cp吧！")])
+                )
 
         # if msg == "群sabi":
         #     # 在bed中建立sabi存储
@@ -963,14 +1012,14 @@ async def group_message_handler(
                     at.target = member.id
                     flag = 1
                     now_minute = datetime.datetime.now().minute
-                    if not 'atme' in bed:
-                        bed['atme'] = {member.id: {now_minute: 1}}
-                    elif not member.id in bed['atme']:
-                        bed['atme'][member.id] = {now_minute: 1}
-                    elif not now_minute in bed['atme'][member.id]:
-                        bed['atme'][member.id] = {now_minute: 1}
+                    if not "atme" in bed:
+                        bed["atme"] = {member.id: {now_minute: 1}}
+                    elif not member.id in bed["atme"]:
+                        bed["atme"][member.id] = {now_minute: 1}
+                    elif not now_minute in bed["atme"][member.id]:
+                        bed["atme"][member.id] = {now_minute: 1}
                     else:
-                        bed['atme'][member.id][now_minute] += 1
+                        bed["atme"][member.id][now_minute] += 1
             if flag == 0:
                 return
             if message.display.find("/生日快乐") != -1:
@@ -979,19 +1028,35 @@ async def group_message_handler(
                 except:
                     pass
             await app.send_group_message(group, message.as_sendable())
-            atme_times = bed['atme'][member.id][now_minute]
+            atme_times = bed["atme"][member.id][now_minute]
             if atme_times >= 3:
                 switch.addBlackList(member.id)
-                await app.send_group_message(group, MessageChain([
-                    At(target=member), Plain(" 该用户频繁对bot进行骚扰，已自动拉黑")
-                ]))
-                await app.send_group_message(mygroup, MessageChain([
-                    Plain(f"{member.name}({member.id})在群{group.name}({group.id})中对bot频繁骚扰，已自动拉黑")
-                ]))
+                await app.send_group_message(
+                    group,
+                    MessageChain([At(target=member), Plain(" 该用户频繁对bot进行骚扰，已自动拉黑")]),
+                )
+                await app.send_group_message(
+                    mygroup,
+                    MessageChain(
+                        [
+                            Plain(
+                                f"{member.name}({member.id})在群{group.name}({group.id})中对bot频繁骚扰，已自动拉黑"
+                            )
+                        ]
+                    ),
+                )
 
         pattern = re.compile(r"异.*世.*相.*遇.*尽.*享.*美.*味.*")
         if pattern.search(message.display) is not None:
             await app.send_group_message(group, MessageChain([Plain("来一份二刺猿桶")]))
+
+        #在线编译模块
+        if msg.startswith(tuple(compiler.compiler_lang)):
+            txt = msg.split('\n', 1)
+            if len(txt) > 1:
+                res = await compiler.compiler_main(txt[0].replace(' ', ''), txt[1])
+                await app.send_group_message(group, MessageChain([Plain(res)]))
+
 
     except KeyboardInterrupt:
         print("quit")
@@ -1009,6 +1074,7 @@ async def group_message_handler(
     )
 )
 async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
+    return
     # 瞎搞模块
     try:
         text = message.display.split(" ")

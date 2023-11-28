@@ -178,17 +178,18 @@ async def clock(app, mytasks: dict):
 
 async def clock_test(app):
     print("开抢！")
+    app_url = "https://testflight.apple.com/join/rACTLjPL"
     t1 = 0
     while True:
         import requests
-        r = requests.get("https://testflight.apple.com/join/rACTLjPL")        
+        r = requests.get(app_url)        
         if r.text.find("This beta is full.") == -1 and r.text.find("此 Beta 版本的测试员已满。") == -1:
-            await app.send_friend_message(349468958, MessageChain([Plain("not full\nhttps://testflight.apple.com/join/rACTLjPL")]))
+            await app.send_friend_message(349468958, MessageChain([Plain(f"not full\n{app_url}")]))
             print("not full")
         else:
             # print("full")
             if t1 == 0:
-                await app.send_friend_message(349468958, MessageChain([Plain("full\nhttps://testflight.apple.com/join/rACTLjPL")]))
+                await app.send_friend_message(349468958, MessageChain([Plain(f"full\n{app_url}")]))
                 t1 = 1
             pass
         await asyncio.sleep(600)

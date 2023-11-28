@@ -161,7 +161,7 @@ async def repeattt(app: Ariadne):
             mytasks[i] = partial(bilibili.getprivate, app, i)
 
     asyncio.create_task(repeat.clock(app, mytasks))
-    # asyncio.create_task(repeat.clock_test(app))
+    asyncio.create_task(repeat.clock_test(app))
 
     Localpath = "./data/live.json"
     data = {}
