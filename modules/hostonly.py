@@ -140,6 +140,10 @@ async def fun(app: Ariadne, message: MessageChain, member: Member, group: Group)
                     group, MessageChain([Plain(f"{sstr[1]}没有拉取到东西")])
                 )
 
+    if message.display.startswith("测试全拉取"):
+        for i in mytasks:
+            asyncio.create_task(mytasks[i]())
+
     if message.display == "打印任务":
         print(mytasks)
         await app.send_group_message(group, MessageChain([Plain(str(mytasks))]))

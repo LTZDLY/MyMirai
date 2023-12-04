@@ -83,7 +83,7 @@ async def priv_toqq(app, message: MessageChain):
         await app.send_friend_message(hostqq, MessageChain([Plain('发送成功')]))
     except:
         try:
-            await app.sendTempMessage(int(ss[1]), msga.as_sendable())
+            await app.send_temp_message(int(ss[1]), msga.as_sendable())
             await app.send_friend_message(hostqq, MessageChain([Plain('发送成功')]))
         except:
             await app.send_friend_message(hostqq, MessageChain([Plain('发送失败')]))

@@ -157,8 +157,8 @@ async def weather_main(app, group, member, msg: str):
         @Waiter.create_using_function([GroupMessage])
         async def waiter(event: GroupMessage, waiter_group: Group, waiter_member: Member, waiter_message: MessageChain):
             if waiter_group.id == group.id and waiter_member.id == member.id:
-                if is_int(waiter_message.asDisplay()):
-                    id = int(waiter_message.asDisplay()) - 1
+                if is_int(waiter_message.display):
+                    id = int(waiter_message.display) - 1
                     if id >= len(lit) or id < 0:
                         await app.send_group_message(group, MessageChain([Plain('查询被取消了切噜噜——')]))
                         return event

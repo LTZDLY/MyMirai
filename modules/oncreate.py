@@ -77,7 +77,7 @@ async def member_unmute_handler(app: Ariadne, event: MemberUnmuteEvent):
         ]
     )
     await app.send_group_message(event.member.group.id, message)
-    # app.getMember()
+    # app.get_member()
 
 
 @channel.use(ListenerSchema(listening_events=[BotMuteEvent]))

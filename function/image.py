@@ -11,10 +11,11 @@ from PIL import ImageDraw, ImageFont
 fontpath = "src/static/msyh.ttc"
 
 
-def text_to_image(text):
+def text_to_image(text, fontpath="src/static/msyh.ttc", margin = 4):
+    if text[-1] == '\n':
+        text = text[:-1]
     font = ImageFont.truetype(fontpath, 24)
     padding = 10
-    margin = 4
     text_list = text.split("\n")
     max_width = 0
     for text in text_list:

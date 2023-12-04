@@ -21,7 +21,7 @@ MYFONT = r"./source/font/DengXian.ttf"
 NAME_BOARDER_WIDTH = 2
 
 
-def line_break(line, char_count=LINE_CHAR_COUNT):
+def line_break(line: str, char_count=LINE_CHAR_COUNT) -> str:
     ret = ""
     width = 0
     for c in line:

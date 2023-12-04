@@ -13,6 +13,8 @@ from graia.saya import Saya
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from function.logger import logger
+
 app = Ariadne(
     connection=config(
         1424912867,  # 你的机器人的 qq 号
@@ -23,7 +25,7 @@ app = Ariadne(
         # 如果你 mirai-api-http 的地址与端口也是 localhost:8080
         # 就可以删掉这两行，否则需要修改为 mirai-api-http 的地址与端口
         HttpClientConfig(host="http://localhost:8098"),
-        WebsocketClientConfig(host="http://localhost:8098"),
+        # WebsocketClientConfig(host="http://localhost:8098"),
     ),
 )
 
@@ -42,7 +44,7 @@ with saya.module_context():
             # 假设模组是以 `_` 开头的，就不去导入
             # 根据 Python 标准，这类模组算是私有函数
             continue
-        # print(f"modules.{module_info.name}")
+        # logger.info(f"modules.{module_info.name}")
         saya.require(f"modules.{module_info.name}")
 
 
@@ -53,7 +55,7 @@ def get_md5(file_name) -> str:
 
 
 def check_change(file_name, mod, typing="change"):
-    # print(file_name, mod)
+    # logger.info(file_name, mod)
     code = get_md5(file_name)
     while 1:
         time.sleep(1)
@@ -62,14 +64,14 @@ def check_change(file_name, mod, typing="change"):
             break
         code = newcode
     if typing == "new":
-        print(f"对{mod} import")
+        logger.info(f"对{mod} import")
         saya.require(mod)
         # __import__(mod)
     else:
-        print(f"对{mod}热重载")
-        # print(mod)
+        logger.info(f"对{mod}热重载")
+        # logger.info(mod)
         a = saya.channels.get(mod)
-        # print(a)
+        # logger.info(a)
         saya.reload_channel(a)
         # reload(sys.modules[mod])
 
@@ -80,7 +82,7 @@ class MyHandler(FileSystemEventHandler):
         self.t = 0
 
     def on_modified(self, event):
-        # print(event)
+        # logger.info(event)
         t1 = time.time_ns()
         if self.t == 0:
             self.t = t1
@@ -88,11 +90,10 @@ class MyHandler(FileSystemEventHandler):
             return
         self.t = t1
 
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f]")
         if event.src_path[-3:] != ".py":
-            print(f"{t}: 文件被修改 {event.src_path}")
+            logger.info(f"文件被修改 {event.src_path}")
             return
-        print(f"{t}: 文件被修改 {event.src_path}，执行热重载")
+        logger.info(f"文件被修改 {event.src_path}，执行热重载")
         mod = event.src_path[2:-3].replace("/", ".")
         # time.sleep(1)
         # reload(sys.modules[mod])
@@ -100,11 +101,10 @@ class MyHandler(FileSystemEventHandler):
         Thread(target=check_change, args=(event.src_path, mod)).start()
 
     def on_created(self, event):
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f]")
         if event.src_path[-3:] != ".py":
-            print(f"{t}: 文件被创建 {event.src_path}")
+            logger.info(f"文件被创建 {event.src_path}")
             return
-        print(f"{t}: 文件被创建 {event.src_path}，执行热重载")
+        logger.info(f"文件被创建 {event.src_path}，执行热重载")
         mod = event.src_path[2:-3].replace("/", ".")
         # time.sleep(1)
         # __import__(pkgname + "." + mod)

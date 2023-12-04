@@ -5,6 +5,7 @@ import os
 import random
 import re
 import traceback
+from aiohttp import ClientSession
 
 import requests
 from graia.ariadne.app import Ariadne
@@ -37,7 +38,7 @@ from function import (
     switch,
     todotree,
     weather,
-    compiler
+    compiler,
 )
 from function.data import bed, hostqq, listen, live, mygroup, mytasks, rep
 
@@ -204,8 +205,8 @@ async def group_message_handler(
         # bot 退群指令
         if member.id == hostqq and message.display == "\\withdraw":
             try:
-                await app.revokeMessage(message.__root__[0].id)
-                await app.kick(group, member)
+                await app.recall_message(message.__root__[0].id)
+                await app.kick_member(group, member)
             except:
                 pass
             await app.quit_group(group)
@@ -577,7 +578,7 @@ async def group_message_handler(
             await app.send_group_message(
                 group, MessageChain([Plain(signup.signup(member.id))])
             )
-        # print(await app.getMember(group, 948153351))
+        # print(await app.get_member(group, 948153351))
         if permissionflag >= 1 and msg.startswith("mute"):
             mute.mute_member(app, group, message)
 
@@ -1050,13 +1051,29 @@ async def group_message_handler(
         if pattern.search(message.display) is not None:
             await app.send_group_message(group, MessageChain([Plain("来一份二刺猿桶")]))
 
-        #在线编译模块
+        # 在线编译模块
         if msg.startswith(tuple(compiler.compiler_lang)):
-            txt = msg.split('\n', 1)
+            txt = msg.split("\n", 1)
             if len(txt) > 1:
-                res = await compiler.compiler_main(txt[0].replace(' ', ''), txt[1])
-                await app.send_group_message(group, MessageChain([Plain(res)]))
-
+                res = await compiler.compiler_main(txt[0].replace(" ", ""), txt[1])
+                if res.find("\n") != -1:
+                    await app.send_group_message(
+                        group,
+                        MessageChain(
+                            [
+                                Image(
+                                    data_bytes=image.image_to_bytes(
+                                        image.text_to_image(
+                                            res, r"source/font/sarasa-fixed-sc-semibold.ttf"
+                                        )
+                                    ),
+                                    encoding="utf-8",
+                                )
+                            ]
+                        ),
+                    )
+                else:
+                    await app.send_group_message(group, MessageChain([Plain(res)]))
 
     except KeyboardInterrupt:
         print("quit")
@@ -1074,7 +1091,6 @@ async def group_message_handler(
     )
 )
 async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
-    return
     # 瞎搞模块
     try:
         text = message.display.split(" ")
@@ -1087,24 +1103,63 @@ async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
             await app.send_group_message(group, MessageChain([Plain("你好好反思反思你在说什么")]))
             return
         url = "https://lab.magiconch.com/api/nbnhhsh/guess"
-        r = requests.post(url, data={"text": txt}).json()
+        async with ClientSession() as session:
+            async with session.post(url, data={"text": txt}) as response:
+                r = await response.json()
         if r:
             r = r[0]
             if "inputting" in r and r["inputting"]:
                 ss = "%s 有可能是：" % r["name"]
                 r["inputting"].sort()
-                for i in r["inputting"]:
-                    ss += "\n" + i
+                ss += "\n" + line_break("\t".join(r["inputting"]))
             elif "trans" in r and r["trans"]:
                 ss = "%s 可能是：" % r["name"]
                 r["trans"].sort()
-                for i in r["trans"]:
-                    ss += "\n" + i
+                ss += "\n" + line_break("\t".join(r["trans"]))
             else:
                 ss = "你在说些什么"
         else:
             ss = "我听不懂"
-        await app.send_group_message(group, MessageChain([Plain(ss)]))
+        if ss.find("\n") != -1:
+            await app.send_group_message(
+                group,
+                MessageChain(
+                    [
+                        Image(
+                            data_bytes=image.image_to_bytes(image.text_to_image(ss)),
+                            encoding="utf-8",
+                        )
+                    ]
+                ),
+            )
+        else:
+            await app.send_group_message(group, MessageChain([Plain(ss)]))
     except Exception as e:
         traceback.print_exc()
         await app.send_group_message(group, MessageChain([Plain("服务器开小差了，请稍后再试哦~")]))
+
+
+def line_break(line: str, char_count=30 * 2) -> str:
+    ret = ""
+    width = 0
+    for c in line:
+        if len(c.encode("utf8")) == 3:  # 中文
+            # 中文宽度加2，注意换行边界
+            width += 2
+            ret += c
+        else:
+            if c == "\t":
+                space_c = 4 - width % 4  # 已有长度对TABLE_WIDTH取余
+                width += space_c
+                if width >= char_count:
+                    ret += "\n"
+                    width = 0
+                else:
+                    ret += "　" * (space_c // 2)
+                    ret += " " * (space_c % 2)
+            else:
+                width += 1
+                ret += c
+    if ret.endswith("\n"):
+        return ret[:-1]
+    return ret

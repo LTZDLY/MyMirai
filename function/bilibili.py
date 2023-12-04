@@ -4,6 +4,7 @@ import os
 import time
 from functools import partial
 from io import BytesIO
+from aiohttp import ClientSession
 
 import requests
 from graia.ariadne.message.chain import MessageChain
@@ -12,6 +13,7 @@ from graia.ariadne.message.element import Forward, ForwardNode, Image, Plain
 from function.bilibili_private import draw_messages
 from function.bilibili_qrlogin import bilibili_qrlogin
 from function.data import gravity_bili_jct, gravity_cookie
+from function.logger import logger
 
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
 table = "fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF"
@@ -44,19 +46,21 @@ async def sign(app, group):
         "csrf_token": data["shinoai"]["bili_jct"],
         "csrf": data["shinoai"]["bili_jct"],
     }
-    r = requests.get(url, headers=headers)
-    if r.json()["code"] == 0:
+    async with ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            r = await response.json()
+    if r["code"] == 0:
         await app.send_group_message(
-            group, MessageChain([Plain("签到成功！本次签到奖励为：" + r.json()["data"]["text"])])
+            group, MessageChain([Plain("签到成功！本次签到奖励为：" + r["data"]["text"])])
         )
         await app.send_group_message(
             group,
             MessageChain(
-                [Plain("本月一共签到" + str(r.json()["data"]["hadSignDays"]) + "天")]
+                [Plain("本月一共签到" + str(r["data"]["hadSignDays"]) + "天")]
             ),
         )
     else:
-        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
+        await app.send_group_message(group, MessageChain([Plain(r["message"])]))
 
 
 async def get(app, group):
@@ -74,19 +78,21 @@ async def get(app, group):
         "area_v2": "235",
         "platform": "pc",
     }
-    r = requests.post(url, data, headers=headers)
-    if r.json()["code"] != 0:
-        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
+    async with ClientSession() as session:
+        async with session.post(url, data=data, headers=headers) as response:
+            r = await response.json()
+    if r["code"] != 0:
+        await app.send_group_message(group, MessageChain([Plain(r["message"])]))
     else:
-        addr = r.json()["data"]["rtmp"]["addr"]
-        code = r.json()["data"]["rtmp"]["code"]
-        if r.json()["data"]["status"] == "LIVE":
+        addr = r["data"]["rtmp"]["addr"]
+        code = r["data"]["rtmp"]["code"]
+        if r["data"]["status"] == "LIVE":
             await app.send_friend_message(349468958, MessageChain([Plain(addr)]))
             await app.send_friend_message(349468958, MessageChain([Plain(code)]))
             await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
         else:
             await app.send_group_message(
-                group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")])
+                group, MessageChain([Plain(f"直播间开启失败，原因：\n{r['message']}")])
             )
 
 
@@ -104,11 +110,13 @@ async def end(app, group):
         "csrf": data["shinoai"]["bili_jct"],
         "platform": "pc",
     }
-    r = requests.post(url, data, headers=headers)
-    if r.json()["code"] != 0:
-        await app.send_group_message(group, MessageChain([Plain(r.json()["messages"])]))
+    async with ClientSession() as session:
+        async with session.post(url, data=data, headers=headers) as response:
+            r = await response.json()
+    if r["code"] != 0:
+        await app.send_group_message(group, MessageChain([Plain(r["messages"])]))
     else:
-        if r.json()["data"]["status"] == "PREPARING":
+        if r["data"]["status"] == "PREPARING":
             await app.send_group_message(group, MessageChain([Plain("直播间关闭成功")]))
 
 
@@ -136,14 +144,16 @@ async def change(app, group, msg: str):
         "csrf": data["shinoai"]["bili_jct"],
         "title": title,
     }
-    r = requests.post(url, data, headers=headers)
-    if r.json()["msg"] == "ok":
+    async with ClientSession() as session:
+        async with session.post(url, data=data, headers=headers) as response:
+            r = await response.json()
+    if r["msg"] == "ok":
         await app.send_group_message(
             group, MessageChain([Plain(f"直播间标题已更改为：\n{title}")])
         )
     else:
         await app.send_group_message(
-            group, MessageChain([Plain(f"直播间标题更改失败，原因：\n{r.json()['message']}")])
+            group, MessageChain([Plain(f"直播间标题更改失败，原因：\n{r['message']}")])
         )
 
 
@@ -167,11 +177,13 @@ async def triple(app, group, msg: str):
     url = " https://api.bilibili.com/x/web-interface/archive/like/triple"
     headers = {"user-Agent": user_agent, "cookie": data["shinoai"]["cookie"]}
     data = {"csrf": data["shinoai"]["bili_jct"], "aid": av}
-    r = requests.post(url, data, headers=headers)
-    if r.json()["code"] == 0:
+    async with ClientSession() as session:
+        async with session.post(url, data=data, headers=headers) as response:
+            r = await response.json()
+    if r["code"] == 0:
         await app.send_group_message(group, MessageChain([Plain("三连成功！")]))
     else:
-        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
+        await app.send_group_message(group, MessageChain([Plain(r["message"])]))
 
 
 async def private_msg_init(app, tcookie):
@@ -187,22 +199,25 @@ async def private_msg_init(app, tcookie):
     headers = {"user-Agent": user_agent, "cookie": tcookie["cookie"]}
     # 首先访问这个地址，获取所有的会话信息。
     url = "https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?session_type=1&size=200"
-    r = requests.get(url, headers=headers)
-    if r.json()["code"] == 0:
-        session_list = r.json()["data"]["session_list"]
+    async with ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            r = await response.json()
+    if r["code"] == 0:
+        session_list = r["data"]["session_list"]
     else:
         await app.send_group_message(
-            tcookie["group"],
-            MessageChain([Plain(r.json()["message"])])
+            tcookie["group"], MessageChain([Plain(r["message"])])
         )
         return
 
     # 然后访问这个地址，获取所有会话人的会话信息。
     for i in session_list:
         url = f'https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs?talker_id={i["talker_id"]}&session_type=1'
-        r = requests.get(url, headers=headers)
-        if r.json()["code"] == 0:
-            msg = r.json()["data"]["messages"]
+        async with ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                r = await response.json()
+        if r["code"] == 0:
+            msg = r["data"]["messages"]
             if not msg:
                 continue
             bili_private[i["talker_id"]] = msg[0]["timestamp"]
@@ -236,12 +251,12 @@ async def getprivate(app, part):
     with open(Localpath, "r", encoding="utf8") as fp:
         cookies = json.load(fp)
     data = cookies[part]
-    print(f"{part}正在进行消息拉取...")
+    logger.info(f"{part}正在进行消息拉取...")
     msg = await private_msg(app, data)
     if msg:
         await app.send_group_message(data["group"], msg)
     else:
-        print(f"{part}并没有拉取到东西")
+        logger.info(f"{part}并没有拉取到东西")
 
 
 async def private_msg(app, tcookie):
@@ -259,64 +274,72 @@ async def private_msg(app, tcookie):
     with open(Localpath, "r", encoding="utf8") as fp:
         bili_private = json.load(fp)
 
-    # print(bili_private)
+    # logger.info(bili_private)
     headers = {"user-Agent": user_agent, "cookie": tcookie["cookie"]}
     # 首先访问这个地址，获取所有的会话信息。
     url = "https://api.vc.bilibili.com/session_svr/v1/session_svr/get_sessions?session_type=1&size=10"
-    r = requests.get(url, headers=headers)
-    if r.json()["code"] == 0:
-        session_list = r.json()["data"]["session_list"]
-    else:
-        return MessageChain([Plain(r.json()["message"])])
+
+    async with ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            r = await response.json()
+            if r["code"] == 0:
+                session_list = r["data"]["session_list"]
+            else:
+                return MessageChain([Plain(r["message"])])
 
     # 然后访问这个地址，获取所有会话人的会话信息。
     msgs = {}
     acc_info = {}
     for i in session_list:
         url = f'https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs?talker_id={i["talker_id"]}&session_type=1'
-        r = requests.get(url, headers=headers)
-        if r.json()["code"] == 0:
-            msg = r.json()["data"]["messages"]
-            if not msg:
-                continue
-            if not str(i["talker_id"]) in bili_private:
-                bili_private[str(i["talker_id"])] = 0
-            # print(i["talker_id"], msg[0]['timestamp'], bili_private[str(i["talker_id"])])
-            if msg[0]["timestamp"] != bili_private[str(i["talker_id"])]:
-                tmsgs = []
-                for j in msg:
-                    if str(j["sender_uid"]) == str(tcookie["uid"]):
-                        tmsgs.append(j)
-                    if not str(j["sender_uid"]) in bili_private:
+        async with ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                r = await response.json()
+                if r["code"] == 0:
+                    msg = r["data"]["messages"]
+                    if not msg:
                         continue
-                    if j["timestamp"] != bili_private[str(j["sender_uid"])]:
-                        tmsgs.append(j)
-                    else:
-                        break
-                msgs[i["talker_id"]] = tmsgs
-                if "account_info" in i:
-                    acc_info[i["talker_id"]] = i["account_info"]
+                    if not str(i["talker_id"]) in bili_private:
+                        bili_private[str(i["talker_id"])] = 0
+                    # logger.info(i["talker_id"], msg[0]['timestamp'], bili_private[str(i["talker_id"])])
+                    if msg[0]["timestamp"] != bili_private[str(i["talker_id"])]:
+                        tmsgs = []
+                        for j in msg:
+                            if str(j["sender_uid"]) == str(tcookie["uid"]):
+                                tmsgs.append(j)
+                            if not str(j["sender_uid"]) in bili_private:
+                                continue
+                            if j["timestamp"] != bili_private[str(j["sender_uid"])]:
+                                tmsgs.append(j)
+                            else:
+                                break
+                        msgs[i["talker_id"]] = tmsgs
+                        if "account_info" in i:
+                            acc_info[i["talker_id"]] = i["account_info"]
 
-            bili_private[str(i["talker_id"])] = msg[0]["timestamp"]
+                    bili_private[str(i["talker_id"])] = msg[0]["timestamp"]
 
-    with open(Localpath, "w", encoding="utf8") as fw:
-        jsObj = json.dumps(bili_private)
-        fw.write(jsObj)
-        fw.close()
+            with open(Localpath, "w", encoding="utf8") as fw:
+                jsObj = json.dumps(bili_private)
+                fw.write(jsObj)
+                fw.close()
 
-    if msgs:
-        return await bili_private_handler(app, msgs, tcookie, acc_info)
+            if msgs:
+                return await bili_private_handler(app, msgs, tcookie, acc_info)
 
-    # print(len(msg), i['talker_id'])
+            # logger.info(len(msg), i['talker_id'])
 
 
 async def bili_private_handler(app, msgs, tcookie, acc_info=None):
     headers = {"user-Agent": user_agent, "cookie": tcookie["cookie"]}
 
     url = f"https://api.vc.bilibili.com/account/v1/user/cards?uids={tcookie['uid']}"
-    r = requests.get(url, headers=headers)
-    if r.json()["code"] == 0:
-        face = r.json()["data"][0]
+    r = None
+    async with ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            r = await response.json()
+    if r["code"] == 0:
+        face = r["data"][0]
 
     msg_list = []
     num_people = 0
@@ -331,11 +354,13 @@ async def bili_private_handler(app, msgs, tcookie, acc_info=None):
             temp["face"] = acc_info[i]["pic_url"]
         else:
             url = f"https://api.vc.bilibili.com/account/v1/user/cards?uids={i}"
-            r = requests.get(url, headers=headers)
-            if r.json()["code"] == 0:
-                if not r.json()["data"]:
+            async with ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    r = await response.json()
+            if r["code"] == 0:
+                if not r["data"]:
                     continue
-                data = r.json()["data"][0]
+                data = r["data"][0]
                 temp["name"] = data["name"]
                 temp["face"] = data["face"]
         ttemp = []
@@ -363,13 +388,13 @@ async def bili_private_handler(app, msgs, tcookie, acc_info=None):
             ttemp.append(tttemp)
         temp["msgs"] = ttemp
 
-        # msg = r.json()['data']['messages']
-        # print(len(msg), i['talker_id'])
+        # msg = r['data']['messages']
+        # logger.info(len(msg), i['talker_id'])
         pass
         if temp:
             msg_list.append(temp)
 
-    print(msg_list)
+    logger.info(msg_list)
     img_list = await draw_messages(msg_list)
 
     fwd_nodeList = [
@@ -491,19 +516,21 @@ async def get_gravity(app, group, member):
         "area_v2": "255",
         "platform": "pc",
     }  # 255代表明日方舟分区
-    r = requests.post(url, data, headers=headers)
-    if r.json()["code"] != 0:
-        await app.send_group_message(group, MessageChain([Plain(r.json()["message"])]))
+    async with ClientSession() as session:
+        async with session.post(url, data=data, headers=headers) as response:
+            r = await response.json()
+    if r["code"] != 0:
+        await app.send_group_message(group, MessageChain([Plain(r["message"])]))
     else:
-        addr = r.json()["data"]["rtmp"]["addr"]
-        code = r.json()["data"]["rtmp"]["code"]
-        if r.json()["data"]["status"] == "LIVE":
+        addr = r["data"]["rtmp"]["addr"]
+        code = r["data"]["rtmp"]["code"]
+        if r["data"]["status"] == "LIVE":
             await app.send_friend_message(member, MessageChain([Plain(addr)]))
             await app.send_friend_message(member, MessageChain([Plain(code)]))
             await app.send_group_message(group, MessageChain([Plain("直播间开启成功")]))
         else:
             await app.send_group_message(
-                group, MessageChain([Plain(f"直播间开启失败，原因：\n{r.json()['message']}")])
+                group, MessageChain([Plain(f"直播间开启失败，原因：\n{r['message']}")])
             )
 
 
@@ -516,8 +543,10 @@ async def end_gravity(app, group):
         "csrf": gravity_bili_jct,
         "platform": "pc",
     }
-    r = requests.post(url, data, headers=headers)
-    if r.json()["data"]["status"] == "PREPARING":
+    async with ClientSession() as session:
+        async with session.post(url, data=data, headers=headers) as response:
+            r = await response.json()
+    if r["data"]["status"] == "PREPARING":
         await app.send_group_message(group, MessageChain([Plain("直播间关闭成功")]))
 
 
@@ -537,13 +566,15 @@ async def change_gravity(app, group, msg: str):
         "csrf": gravity_bili_jct,
         "title": title,
     }
-    r = requests.post(url, data, headers=headers)
-    print(r.json())
-    if r.json()["msg"] == "ok":
+    async with ClientSession() as session:
+        async with session.post(url, data=data, headers=headers) as response:
+            r = await response.json()
+    logger.info(r)
+    if r["msg"] == "ok":
         await app.send_group_message(
             group, MessageChain([Plain(f"直播间标题已更改为：\n{title}")])
         )
     else:
         await app.send_group_message(
-            group, MessageChain([Plain(f"直播间标题更改失败，原因：\n{r.json()['message']}")])
+            group, MessageChain([Plain(f"直播间标题更改失败，原因：\n{r['message']}")])
         )

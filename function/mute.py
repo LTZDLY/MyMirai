@@ -46,7 +46,7 @@ def mute_member(app, group: Group, msg: MessageChain):
         return
     mutelist = []
     time = 0
-    text = msg.asDisplay().split(' ')
+    text = msg.display.split(' ')
     for at in msg.get(At):
         mutelist.append(at.target)
     for i in text:
@@ -59,13 +59,13 @@ def mute_member(app, group: Group, msg: MessageChain):
 async def set_mute(app, group: Group, mutelist: list, mutetime):
     num = 1
     lenn = len(mutelist)
-    # my = await app.getMember(group, 1424912867)
+    # my = await app.get_member(group, 1424912867)
     # my_flag = 1 if my.permission == "MEMBER" else 2 if my.permission == "ADMINISTRATOR" else 3
     my_flag = 3
     for i in range(lenn):
         time = mutetime * 60
         sender: Member
-        sender = await app.getMember(group, mutelist[i])
+        sender = await app.get_member(group, mutelist[i])
         sender_flag: int
         # print(sender.permission.Member)
         sender_flag = 1 if sender.permission == MemberPerm.Member else 2 if sender.permission == MemberPerm.Administrator else 3
@@ -81,11 +81,11 @@ async def set_mute(app, group: Group, mutelist: list, mutetime):
             if (time == 0):
                 text = sender.name + '(' + str(sender.id) + ')' + \
                     "被我解除禁言"
-                await app.unmuteMember(group, sender)
+                await app.unmute_member(group, sender)
             else:
                 text = sender.name + '(' + str(sender.id) + ')' + \
                     "被我禁言" + time_to_str(int(time))
-                await app.muteMember(group, sender, int(time))
+                await app.mute_member(group, sender, int(time))
             await app.send_group_message(group, MessageChain([Plain(text)]))
 
 
