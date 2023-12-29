@@ -13,6 +13,8 @@ from aiowebsocket.converses import AioWebSocket
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Plain
 
+from function.logger import logger
+
 remote = "wss://broadcastlv.chat.bilibili.com:2245/sub"
 
 # 心跳包为不携带数据的数据包，仅包含数据包头部信息，具体代表如后文所示。其中，心跳包的操作码为2
@@ -83,9 +85,7 @@ async def entrence(app, room_id):
     num = 0
     while True:
         num += 1
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[: len(t) - 3] + "]"
-        print("%s[ERROR]: %s: 连接断开，正在尝试第%d次重连." % (t, room_id, num))
+        logger.info(f"[ERROR]: {room_id}: 连接断开，正在尝试第{num}次重连.")
         await startup(app, room_id)
 
 
@@ -96,9 +96,7 @@ async def startup(app, room_id: str):
         converse = aws.manipulator
         await converse.send(d)
         tasks = asyncio.create_task(sendHeartBeat(converse, room_id))
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[: len(t) - 3] + "]"
-        print("%s[NOTICE]: 开启对房间号%s的视奸" % (t, room_id))
+        logger.info(f"[NOTICE]: 开启对房间号{room_id}的视奸")
         try:
             while True:
                 recv_text = await converse.receive()
@@ -115,15 +113,8 @@ async def sendHeartBeat(websocket, room_id):
     while True:
         await asyncio.sleep(30)
         await websocket.send(bytes.fromhex(hb))
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[: len(t) - 3] + "]"
-        # print('%s[NOTICE]: %s: Sent HeartBeat.' % (t, room_id))
+        # logger.info(f"[NOTICE]: {room_id}: Sent HeartBeat.")
 
-
-# async def receDM(app, websocket, room_id):
-#     while True:
-#         recv_text = await websocket.receive()
-#         await printDM(app, recv_text, room_id)
 
 # 将数据包传入：
 
@@ -145,11 +136,11 @@ async def printDM(app, data, room_id):
         data = data[:packetLen]
 
     # ver 为1的时候为进入房间后或心跳包服务器的回应。op 为3的时候为房间的人气值。
-    # if (ver == 1):
-    #     if (op == 3):
+    # if ver == 1:
+    #     if op == 3:
     #         t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-    #         t = t[:len(t) - 3] + ']'
-    #         print('%s[POPULARITY]: %s: %d' % (t, room_id, int(data[16:].hex(), 16)))
+    #         t = t[: len(t) - 3] + "]"
+    #         print("%s[POPULARITY]: %s: %d" % (t, room_id, int(data[16:].hex(), 16)))
     #     return
 
     # ver 为2的时候代表接收到的是 zlib 压缩的数据包，这个时候要去解压。
@@ -196,9 +187,7 @@ async def printDM(app, data, room_id):
 
         if jd["cmd"] != "LIVE":
             return
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[: len(t) - 3] + "]"
-        print("%s[NOTICE]: %s: LIVE START!" % (t, room_id))
+        logger.info(f"[NOTICE]: {room_id}: LIVE START!")
         Localpath = "./data/live.json"
         data = {}
         with open(Localpath, encoding="utf-8") as fr:

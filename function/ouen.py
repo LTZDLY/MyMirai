@@ -1,5 +1,7 @@
 from io import BytesIO
 from PIL import Image as Img, ImageDraw, ImageFont
+from pilmoji import Pilmoji
+from pilmoji.source import MicrosoftEmojiSource
 
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image
@@ -13,50 +15,53 @@ async def ouen(app, txt: str, group):
 
     mask = img
     s_background = Img.new("RGBA", (650, 650), (255, 255, 255, 0))  # alpha通道设为0，保证透明度
-    s_draw = ImageDraw.Draw(s_background)
+    with Pilmoji(s_background, source=MicrosoftEmojiSource) as pilmoji:
+        # pilmoji.text((x, y), txt, fill=(0, 0, 0), font=font)
+        # s_draw = ImageDraw.Draw(s_background)
 
-    size_max = int(320 / len(txt) * 2) + 1
-    size_min = int(320 / len(txt)) - 1
+        size_max = int(320 / len(txt) * 2) + 1
+        size_min = int(320 / len(txt)) - 1
 
-    # print(len(txt))
-    if len(txt) == 1:
-        font = ImageFont.truetype(MYFONT, 180)
-        text_size = draw.textsize(txt, font=font)
-        # print(text_size)
-        if abs(text_size[0] - 180) < 30:
-            x, y = 180, 30
-        else:
-            x, y = 225, 30
-    elif len(txt) == 2:
-        font = ImageFont.truetype(MYFONT, 140)
-        text_size = draw.textsize(txt, font=font)
-        # print(text_size)
-        if abs(text_size[0] - 280) < 20:
-            x, y = 130, 50
-        elif abs(text_size[0] - 210) < 20:
-            x, y = 165, 50
-        else:
-            x, y = 200, 50
-    else:
-        x = 110
-        for size in range(size_max, size_min, -1):
-            font = ImageFont.truetype(MYFONT, size)
+        # print(len(txt))
+        if len(txt) == 1:
+            font = ImageFont.truetype(MYFONT, 180)
             text_size = draw.textsize(txt, font=font)
             # print(text_size)
-            if text_size[0] > 320:
-                continue
+            if abs(text_size[0] - 180) < 30:
+                x, y = 180, 30
             else:
-                break
+                x, y = 225, 30
+        elif len(txt) == 2:
+            font = ImageFont.truetype(MYFONT, 140)
+            text_size = draw.textsize(txt, font=font)
+            # print(text_size)
+            if abs(text_size[0] - 280) < 20:
+                x, y = 130, 50
+            elif abs(text_size[0] - 210) < 20:
+                x, y = 165, 50
+            else:
+                x, y = 200, 50
+        else:
+            x = 110
+            for size in range(size_max, size_min, -1):
+                font = ImageFont.truetype(MYFONT, size)
+                text_size = draw.textsize(txt, font=font)
+                # print(text_size)
+                if text_size[0] > 320:
+                    continue
+                else:
+                    break
 
-        s = text_size[1]
-        y = (
-            -0.0009077705156136529 * (pow(s, 2))
-            - 0.25326797385620914 * s
-            + 105.27777777777777
-        )
-        # print(y)
-
-    s_draw.text((x, y), txt, fill=(0, 0, 0), font=font)
+            s = text_size[1]
+            y = (
+                -0.0009077705156136529 * (pow(s, 2))
+                - 0.25326797385620914 * s
+                + 105.27777777777777
+            )
+            # print(y)
+        x = int(x)
+        y = int(y)
+        pilmoji.text((x, y), txt, fill=(0, 0, 0), font=font)
     s_rotate = s_background.rotate(-5, expand=1)  # 图像会转动随机的角度
     mask.resize(s_rotate.size, Img.LANCZOS)
 

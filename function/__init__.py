@@ -21,7 +21,7 @@ for _, file, _ in pkgutil.iter_modules([pkgpath]):
 
 # import function.arknights
 # import function.bilibili
-# # import function.canvas
+# import function.canvas
 # import function.cherugo
 # import function.danmaku
 # import function.excel

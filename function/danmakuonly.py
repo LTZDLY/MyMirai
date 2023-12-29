@@ -13,6 +13,8 @@ import requests
 # import speech
 from aiowebsocket.converses import AioWebSocket
 
+from logger import logger
+
 remote = "wss://tx-gz-live-comet-01.chat.bilibili.com/sub"
 
 hb = "00000010001000010000000200000001"
@@ -45,7 +47,6 @@ def get_data(room_id):
     print(r.json())
     if r.json()["code"] == 0:
         key = r.json()["data"]["token"]
-        global remote
         remote = f"wss://{r.json()['data']['host_list'][0]['host']}/sub"
 
     # 握手包数据内容
@@ -74,7 +75,16 @@ def get_data(room_id):
 
     data_text = text.encode("ascii")  # 将数据包内容转为bytes型
     data = data_head + data_text.hex()  # 将数据包头和数据包内容进行拼接之后返回
-    return bytes.fromhex(data)
+    return remote, bytes.fromhex(data)
+
+
+async def entrence(room_id):
+    """弹幕服务器接入口"""
+    num = 0
+    while True:
+        await startup(room_id)
+        num += 1
+        logger.info(f"[ERROR]: {room_id}: 连接断开，正在尝试第{num}次重连.")
 
 
 async def startup(room_id: str):
@@ -82,28 +92,34 @@ async def startup(room_id: str):
     async with AioWebSocket(remote) as aws:
         converse = aws.manipulator
         await converse.send(d)
-        tasks = asyncio.create_task(sendHeartBeat(converse, room_id))
+        tasks = asyncio.create_task(sendHeartBeat(aws, room_id))
+        # try:
         while True:
+            if converse.message_queue.full():
+                break
             recv_text = await converse.receive()
             # print(recv_text)
             printDM(recv_text)
+        # except Exception as e:
+        #     tasks.cancel()
+        #     if str(e) == "断开连接":
+        #         logger.info("断开连接")
+        #         await aws.close_connection()
+        #         tasks.cancel()
+
+        #         # await asyncio.sleep(300)
+        #     await asyncio.sleep(10)
 
 
-async def sendHeartBeat(websocket, room_id):
+async def sendHeartBeat(websocket: AioWebSocket, room_id):
     """每30秒发送心跳包"""
     while True:
         await asyncio.sleep(30)
-        await websocket.send(bytes.fromhex(hb))
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f]")
-        print(f"{t}[NOTICE]: {room_id}: Sent HeartBeat.")
-
-
-# async def receDM(websocket):
-#     while True:
-#         recv_text = await websocket.receive()
-#         printDM(recv_text)
-
-# 将数据包传入：
+        if websocket.state == 2:
+            logger.info(f"[NOTICE]: {room_id}: HeartBeat Break.")
+            break
+        await websocket.manipulator.send(bytes.fromhex(hb))
+        logger.info(f"[NOTICE]: {room_id}: Sent HeartBeat.")
 
 
 def printDM(data):
@@ -186,10 +202,15 @@ def printDM(data):
             if sstr != "":
                 print(sstr)
 
+        # if jd["cmd"] == "LIVE" or (
+        #     jd["cmd"] == "INTERACT_WORD" and jd["data"]["msg_type"] == 1
+        # ):
+        #     raise Exception("断开连接")
+
     else:
         print(data)
 
 
 if __name__ == "__main__":
     roomid = int(input("请输入房间号"))
-    asyncio.get_event_loop().run_until_complete(startup(roomid))
+    asyncio.get_event_loop().run_until_complete(entrence(roomid))

@@ -2,7 +2,7 @@ from itertools import combinations
 import json
 import time
 
-from function.aliyun import Sample
+# from function.aliyun import Sample
 
 with open('data/arknightsstages.json', 'r', encoding='utf8')as fp:
     ark_stages = json.load(fp)
@@ -195,64 +195,64 @@ def fun(d):
     return list(d.keys())[0]
 
 
-def arkRecruit(url):
-    data = Sample.main(url)
-    data = json.loads(data)
-    text = data['content'].split(' ')
-    ans = []
-    for i in text:
-        if i in tags:
-            ans.append(i)
-    # ans = ['远程位', '医疗干员', '生存', '防护', '输出']
-    left = []
-    right = []
-    for i in range(1,6):
-        for c in combinations(ans, i):
-            left.append(c)
+# def arkRecruit(url):
+#     data = Sample.main(url)
+#     data = json.loads(data)
+#     text = data['content'].split(' ')
+#     ans = []
+#     for i in text:
+#         if i in tags:
+#             ans.append(i)
+#     # ans = ['远程位', '医疗干员', '生存', '防护', '输出']
+#     left = []
+#     right = []
+#     for i in range(1,6):
+#         for c in combinations(ans, i):
+#             left.append(c)
             
-    for i in left:
-        l = [i for i in range(99)]
-        for j in i:
-            if not l:
-                break
-            else:
-                l = [m for m in l if m in ark_character['data'][j]]
-        # print(i, l)
-        right.append(l)
-        # output.append({i: ark_character['data'][i]})
-    rright = []
-    d = {}
-    for i in range(len(right)):
-        temp = []
-        for j in range(len(right[i])):
-            right[i][j] = ark_character['characters'][right[i][j]]
-            if (right[i][j]['r'] == 6 and not '高级资深干员' in left[i]):
-                continue
-            if right[i][j]['r'] != 6 and '高级资深干员' in left[i]:
-                continue
-            temp.append(right[i][j])
-        # print(left[i], temp)
-        rright.append(temp)
-        if temp:
-            d[left[i]] = temp
-    d = sorted(d.items(), key=lambda d:(d[1][-1]['r'], len(d[1])), reverse=True)
-    # print(d)
-    return ans, d
-    # sstr = ''
-    # m = 1
-    # for i in d:
-    #     for j in i[0]:
-    #         sstr += j + '，'
-    #     sstr = sstr[:-1] + '：'
-    #     n = 6
-    #     for j in i[1]:
-    #         sstr += j['n'] + '，'
-    #         n = min(n, j['r'])
-    #     sstr = sstr[:-1] + '\n'
-    #     m = max(m, n)
-    # print(sstr[:-1])
-    # print(m)
+#     for i in left:
+#         l = [i for i in range(99)]
+#         for j in i:
+#             if not l:
+#                 break
+#             else:
+#                 l = [m for m in l if m in ark_character['data'][j]]
+#         # print(i, l)
+#         right.append(l)
+#         # output.append({i: ark_character['data'][i]})
+#     rright = []
+#     d = {}
+#     for i in range(len(right)):
+#         temp = []
+#         for j in range(len(right[i])):
+#             right[i][j] = ark_character['characters'][right[i][j]]
+#             if (right[i][j]['r'] == 6 and not '高级资深干员' in left[i]):
+#                 continue
+#             if right[i][j]['r'] != 6 and '高级资深干员' in left[i]:
+#                 continue
+#             temp.append(right[i][j])
+#         # print(left[i], temp)
+#         rright.append(temp)
+#         if temp:
+#             d[left[i]] = temp
+#     d = sorted(d.items(), key=lambda d:(d[1][-1]['r'], len(d[1])), reverse=True)
+#     # print(d)
+#     return ans, d
+#     # sstr = ''
+#     # m = 1
+#     # for i in d:
+#     #     for j in i[0]:
+#     #         sstr += j + '，'
+#     #     sstr = sstr[:-1] + '：'
+#     #     n = 6
+#     #     for j in i[1]:
+#     #         sstr += j['n'] + '，'
+#     #         n = min(n, j['r'])
+#     #     sstr = sstr[:-1] + '\n'
+#     #     m = max(m, n)
+#     # print(sstr[:-1])
+#     # print(m)
     
-# print(search_items('固源岩'))
-# print(search_stages('1-7'))
-# arkRecruit('1')
+# # print(search_items('固源岩'))
+# # print(search_stages('1-7'))
+# # arkRecruit('1')

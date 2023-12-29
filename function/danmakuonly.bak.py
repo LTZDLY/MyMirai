@@ -11,6 +11,7 @@ import brotli
 import requests
 
 # import speech
+from logger import logger
 
 remote = "wss://tx-bj-live-comet-01.chat.bilibili.com/sub"
 
@@ -44,8 +45,9 @@ def get_data(room_id):
     print(r.json())
     if r.json()["code"] == 0:
         key = r.json()["data"]["token"]
-        global remote
-        remote = f"wss://{r.json()['data']['host_list'][0]['host']}/sub"
+        url = r.json()['data']['host_list'][0]
+        remote = f"wss://{url['host']}:{url['wss_port']}/sub"
+        logger.info(remote)
 
     # 握手包数据内容
     data_json = {
@@ -72,39 +74,40 @@ def get_data(room_id):
 
     data_text = text.encode("ascii")  # 将数据包内容转为bytes型
     data = data_head + data_text.hex()  # 将数据包头和数据包内容进行拼接之后返回
-    return bytes.fromhex(data)
+    return remote, bytes.fromhex(data)
 
 
 async def entrence(room_id):
     """弹幕服务器接入口"""
-    await startup(room_id)
     num = 0
     while True:
-        num += 1
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[: len(t) - 3] + "]"
-        print("%s[ERROR]: %s: 连接断开，正在尝试第%d次重连." % (t, room_id, num))
         await startup(room_id)
+        num += 1
+        logger.info(f"[ERROR]: {room_id}: 连接断开，正在尝试第{num}次重连.")
 
 
 async def startup(room_id: str):
     """创建ws连接b站弹幕服务器"""
     async with aiohttp.ClientSession() as session:
+        r, handshake = get_data(room_id)
         # try:
-            async with session.ws_connect(remote) as ws:
-                await ws.send_bytes(get_data(room_id))
-                asyncio.create_task(sendHeartBeat(ws, room_id))
-                t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-                t = t[: len(t) - 3] + "]"
-                print(session.closed)
-                print("%s[NOTICE]: 开启对房间号%s的视奸" % (t, room_id))
-                print(session.closed)
-                async for msg in ws:
-                    printDM(msg.data, room_id)
-                print(session.closed)
+        async with session.ws_connect(remote) as ws:
+            await ws.send_bytes(handshake)
+            task = asyncio.create_task(sendHeartBeat(ws, room_id))
+            logger.info(f"[NOTICE]: 开启对房间号{room_id}的视奸")
+            while True:
+                msg = await ws.receive()
+                logger.info("new message")
+                printDM(msg.data, room_id, ws)
+
         # except Exception as e:
-        #     print(e)
-        #     print(e.args)
+        #     if str(e) == "断开连接":
+        #         logger.info("断开连接")
+        #         await ws.close()
+        #         # await asyncio.sleep(270)
+        #     else:
+        #         raise e
+        #     await asyncio.sleep(10)
 
 
 async def sendHeartBeat(websocket, room_id):
@@ -112,17 +115,18 @@ async def sendHeartBeat(websocket, room_id):
     while True:
         await asyncio.sleep(30)
         if websocket.closed:
+            logger.info(f"[NOTICE]: {room_id}: HeartBeat Break.")
             break  # 若连接断开，则退出函数
         await websocket.send_bytes(bytes.fromhex(hb))
-        t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f")
-        t = t[: len(t) - 3] + "]"
-        print("%s[NOTICE]: %s: Sent HeartBeat." % (t, room_id))
+        logger.info(f"[NOTICE]: {room_id}: Sent HeartBeat.")
 
 
 # 将数据包传入：
 
 
-def printDM(data, room_id):
+def printDM(data, room_id, ws=None):
+    if ws:
+        logger.info(f"{ws, id(ws)}")
     """解析并输出数据包的数据"""
     # 如果传入的data为null则直接返回
     if not data:
@@ -142,14 +146,12 @@ def printDM(data, room_id):
     if ver == 1:
         if op == 3:
             t = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S,%f]")
-            print(f"{t}[RENQI] {int(data[16:].hex(), 16)}")
+            logger.info(f"{t}[RENQI] {int(data[16:].hex(), 16)}")
             pass
 
     # 有时会发送过来 zlib 压缩的数据包，这个时候要去解压。
     elif ver == 2:
-        print(data)
         data = zlib.decompress(data[16:])
-        print(data)
         printDM(data, room_id)
         return
 
@@ -190,17 +192,23 @@ def printDM(data, room_id):
             elif jd["data"]["msg_type"] == 2:
                 sstr = "[FOLLOW] " + jd["data"]["uname"] + " 关注了直播间"
         elif jd["cmd"] == "未知":
-            print(jd)
+            logger.info(jd)
             sstr = "[SHARE] " + jd["data"]["uname"] + " 分享了直播间"
         else:
             sstr = "[OTHER] " + jd["cmd"]
 
         if sstr != "":
-            print(sstr)
+            logger.info(sstr)
+
+        # if jd["cmd"] == "LIVE" or (
+        #     jd["cmd"] == "INTERACT_WORD" and jd["data"]["msg_type"] == 1
+        # ):
+        #     raise Exception("断开连接")
+
     else:
-        print(data)
+        logger.info(data)
 
 
 if __name__ == "__main__":
     roomid = int(input("请输入房间号"))
-    asyncio.get_event_loop().run_until_complete(startup(roomid))
+    asyncio.get_event_loop().run_until_complete(entrence(roomid))

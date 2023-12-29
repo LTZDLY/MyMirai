@@ -1,24 +1,37 @@
 import configparser
-import os
-import json
+import pathlib
 
 
 def write_in_ini(Localpath: str, section: str, key: str, value: str):
-    if os.path.exists(Localpath) == False:
+    if pathlib.Path(Localpath).exists() == False:
         open(Localpath, 'w')
     config = configparser.ConfigParser()
-    config.readfp(open(Localpath))
+    config.read(Localpath)
     if ((section in config) == False):
         config.add_section(section)
     config.set(section, key, value)
-    config.write(open(Localpath, 'w'))
+    with open(Localpath, "w") as fp:
+        config.write(fp)
+
+
+def write_in_ini_list(Localpath: str, section: list[str], key: str, value: str):
+    if pathlib.Path(Localpath).exists() == False:
+        open(Localpath, 'w')
+    config = configparser.ConfigParser()
+    config.read(Localpath)
+    for i in section:
+        if ((i in config) == False):
+            config.add_section(i)
+        config.set(i, key, value)
+    with open(Localpath, "w") as fp:
+        config.write(fp)
 
 
 def read_from_ini(Localpath: str, section: str, key: str, fallback: str):
-    if os.path.exists(Localpath) == False:
+    if pathlib.Path(Localpath).exists() == False:
         return fallback
     config = configparser.ConfigParser()
-    config.readfp(open(Localpath))
+    config.read(Localpath)
     return config.get(section, key, fallback=fallback)
 
 

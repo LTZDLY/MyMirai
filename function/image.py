@@ -7,12 +7,14 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Plain
 from PIL import Image as Img
 from PIL import ImageDraw, ImageFont
+from pilmoji import Pilmoji
+from pilmoji.source import MicrosoftEmojiSource
 
 fontpath = "src/static/msyh.ttc"
 
 
-def text_to_image(text, fontpath="src/static/msyh.ttc", margin = 4):
-    if text[-1] == '\n':
+def text_to_image(text, fontpath="src/static/msyh.ttc", margin=4):
+    if text[-1] == "\n":
         text = text[:-1]
     font = ImageFont.truetype(fontpath, 24)
     padding = 10
@@ -27,12 +29,12 @@ def text_to_image(text, fontpath="src/static/msyh.ttc", margin = 4):
     print(wa, ha)
     print(max_width)
     i = Img.new("RGB", (wa, ha), color=(255, 255, 255))
-    draw = ImageDraw.Draw(i)
-    for j in range(len(text_list)):
-        text = text_list[j]
-        draw.text(
-            (padding, padding + j * (margin + h)), text, font=font, fill=(0, 0, 0)
-        )
+    with Pilmoji(i, source=MicrosoftEmojiSource) as draw:
+        for j in range(len(text_list)):
+            text = text_list[j]
+            draw.text(
+                (padding, padding + j * (margin + h)), text, font=font, fill=(0, 0, 0)
+            )
     return i
 
 

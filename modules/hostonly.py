@@ -35,15 +35,19 @@ async def friendmsg_listener(app: Ariadne, message: MessageChain):
         decorators=[ContainKeyword("recall"), decorators.fromhost(hostqq)],
     )
 )
-async def recall_listener(app: Ariadne, message: MessageChain):
+async def recall_listener(app: Ariadne, message: MessageChain, group: Group):
     # bot撤回指令
+    print(message)
+    print(message.__root__)
+    print(message.as_persistent_string())
+    
+    print("aadfadsfa")
     if message.has(Quote):
+        print("hasquote")
         for at in message.get(Quote):
-            try:
-                await app.recallMessage(at.id)
-                await app.recallMessage(message.__root__[0].id)
-            except:
-                pass
+            print(at)
+            await app.recall_message(at.id, group)
+            await app.recall_message(message, group)
 
 
 @channel.use(
