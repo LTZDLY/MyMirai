@@ -2,9 +2,11 @@ from io import BytesIO
 
 import requests
 from PIL import Image as Img
-from PIL import ImageDraw, ImageFilter, ImageFont
+from PIL import ImageDraw, ImageFilter, ImageFont, ImageFile
 
 from graia.ariadne.util.async_exec import cpu_bound
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 TABLE_WIDTH = 4
 MASSAGE_WIDTH = 1500

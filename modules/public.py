@@ -5,7 +5,9 @@ import os
 import random
 import re
 import time
+import time
 import traceback
+from aiohttp import ClientSession
 from aiohttp import ClientSession
 
 import requests
@@ -40,6 +42,7 @@ from function import (
     todotree,
     weather,
     compiler,
+    blog,
 )
 from function.data import bed, hostqq, listen, live, mygroup, mytasks, rep
 
@@ -56,6 +59,7 @@ async def callme_listener(
     app: Ariadne, message: MessageChain, group: Group, member: Member
 ):
     # 监听事件永远最优先
+    if type(message.__root__[0]) == Forward:
     if type(message.__root__[0]) == Forward:
         return
     for i in listen:
@@ -83,11 +87,43 @@ async def callme_listener(
     ListenerSchema(
         listening_events=[GroupMessage],
         decorators=[decorators.check_permission(3), DetectPrefix("define ")],
+        decorators=[decorators.check_permission(3), DetectPrefix("define ")],
     )
 )
 async def switch_listener(
     app: Ariadne, message: MessageChain, group: Group, member: Member
 ):
+    signup.define(message.display)
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        decorators=[decorators.check_permission(2), DetectPrefix("switch ")],
+    )
+)
+async def switch_listener(
+    app: Ariadne, message: MessageChain, group: Group, member: Member
+):
+    # 开关指令允许转义
+    msg = message.display  # 存储转义
+    data = signup.loadDefine()
+    for i in data:
+        if msg.find(i) == -1:
+            continue
+        # await app.send_group_message(group, MessageChain([Plain('发生转义：\n' + i + '->' + data[i])]))
+        msg = msg.replace(i, data[i])
+    await switch.switch(app, group, member, msg)
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        decorators=[decorators.check_permission(1), DetectPrefix("mute ")],
+    )
+)
+async def mute_listener(
+    app: Ariadne, message: MessageChain, group: Group, member: Member
+):
+        mute.mute_member(app, group, message)
     signup.define(message.display)
 
 @channel.use(
@@ -139,10 +175,16 @@ async def cheru(app: Ariadne, group: Group, member: Member):
     #     file = filePath + k[random.randint(0, len(k) - 1)]
     # audio_bytes = await silkcoder.async_encode(file, ios_adaptive=True)
     # await app.send_group_message(group, MessageChain([Voice(data_bytes=audio_bytes)]))
+    # filePath = "./source/audio/cheru/"
+    # for i, j, k in os.walk(filePath):
+    #     file = filePath + k[random.randint(0, len(k) - 1)]
+    # audio_bytes = await silkcoder.async_encode(file, ios_adaptive=True)
+    # await app.send_group_message(group, MessageChain([Voice(data_bytes=audio_bytes)]))
 
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
+        decorators=[decorators.check_ban()],
         decorators=[decorators.check_ban()],
     )
 )
@@ -154,6 +196,8 @@ async def bili_message_handler(
         if member.id == hostqq and message.display.startswith("bilibili"):
             await bilibili.bilibili(app, group, message.display)
 
+        permissionflag = permission.permissionCheck(member.id, group.id)
+        if permissionflag >= 2 and message.display.startswith("bilibili"):
         permissionflag = permission.permissionCheck(member.id, group.id)
         if permissionflag >= 2 and message.display.startswith("bilibili"):
             await bilibili.bilibili_group(app, mytasks, group, message.display)
@@ -181,6 +225,7 @@ async def group_message_handler(
 
     # 权限检查
     # permissionflag = permission.permissionCheck(member.id, group.id)
+    # permissionflag = permission.permissionCheck(member.id, group.id)
 
     try:
         # 复读
@@ -205,25 +250,31 @@ async def group_message_handler(
 
         if group.id not in rep:
             rep[group.id] = [message.__root__[0:], 1]
+            rep[group.id] = [message.__root__[0:], 1]
         else:
             message_a = message.__root__[0:]
-            if rep[group.id][0] == message_a:
-                rep[group.id][1] += 1
-            else:
-                rep[group.id] = [message_a, 1]
-            if rep[group.id][1] == 3:
-                try:
-                    await app.send_group_message(group, MessageChain(message_a))
-                except Exception as e:
-                    traceback.print_exc()
+            if (message_a != "<! 不支持的消息类型 !>"):
+                if rep[group.id][0] == message_a:
+                    rep[group.id][1] += 1
+                else:
+                    rep[group.id] = [message_a, 1]
+                if rep[group.id][1] == 3:
+                    try:
+                        pass
+                        # await app.send_group_message(group, MessageChain(message_a))
+                    except Exception as e:
+                        traceback.print_exc()
 
         # bot 退群指令
         if member.id == hostqq and message.display == "\\withdraw":
             try:
                 await app.recall_message(message.__root__[0].id)
                 await app.kick_member(group, member)
+                await app.recall_message(message.__root__[0].id)
+                await app.kick_member(group, member)
             except:
                 pass
+            await app.quit_group(group)
             await app.quit_group(group)
             # TODO 将该群聊加入黑名单
 
@@ -367,11 +418,25 @@ async def group_message_handler(
 
         if member.id == 1585165857 or member.id == hostqq:
             if message.display == "开始万引直播":
+        if member.id == 1585165857 or member.id == hostqq:
+            if message.display == "开始万引直播":
                 await bilibili.get_gravity(app, group, member)
+            if message.display == "开始万引直播":
             if message.display == "开始万引直播":
                 await bilibili.end_gravity(app, group)
             if message.display.startswith("开始万引直播间标题"):
+            if message.display.startswith("开始万引直播间标题"):
                 await bilibili.change_gravity(app, group, message.display)
+
+        if group.id == 769641176 or member.id == hostqq:
+            if message.display.startswith("添加月报 "):
+                bvid = message.display.split('添加月报 ')[1]
+                bvid = bvid.split(' ')
+                for i in bvid:
+                    print('添加月报', i)
+                    time_str = blog.add_blog(i)
+                blog.reflash_blog()
+                await app.send_group_message(group, MessageChain([Plain(f'已添加到 {time_str} 月报当中' if len(bvid) == 1 else f'已添加 {len(bvid)} 个视频到月报当中')]))
 
         msg = message.display  # 存储转义
 
@@ -381,6 +446,7 @@ async def group_message_handler(
                 continue
             # await app.send_group_message(group, MessageChain([Plain('发生转义：\n' + i + '->' + data[i])]))
             msg = msg.replace(i, data[i])
+
 
         msgs = message.as_persistent_string(exclude=[Forward])
         data = signup.loadDefine()
@@ -394,6 +460,7 @@ async def group_message_handler(
             or message.display == "？"
             or message.display == "草"
             or message.display == "艹"
+            or message.display == "6"
             or message.display == "6"
         ):
             flag = random.randint(0, 99)
@@ -496,6 +563,9 @@ async def group_message_handler(
                 if info["lock_status"] == 1:
                     status = "封禁中"
                 elif info["live_status"] == 0:
+                if info["lock_status"] == 1:
+                    status = "封禁中"
+                elif info["live_status"] == 0:
                     status = "未开播"
                 elif info["live_status"] == 1:
                     status = "直播中"
@@ -506,6 +576,13 @@ async def group_message_handler(
                     + f'直播分区：{info["parent_area_name"]} - {info["area_name"]}\n'
                     + f'直播间地址：https://live.bilibili.com/{info["room_id"]}\n'
                     + f"""直播间短号：{f"https://live.bilibili.com/{info['short_id']}" if info['short_id'] else "无"}\n"""
+                    + f"直播间状态：{status}\n"
+                    + (
+                        f'解封时间：{time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(info["lock_time"]))}\n'
+                        if info["lock_status"]
+                        else ""
+                    )
+                    + f"直播关键帧："
                     + f"直播间状态：{status}\n"
                     + (
                         f'解封时间：{time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(info["lock_time"]))}\n'
@@ -602,6 +679,9 @@ async def group_message_handler(
             await app.send_group_message(
                 group, MessageChain([Plain(signup.signup(member.id))])
             )
+        # print(await app.get_member(group, 948153351))
+        # if permissionflag >= 1 and msg.startswith("mute"):
+        #     mute.mute_member(app, group, message)
         # print(await app.get_member(group, 948153351))
         # if permissionflag >= 1 and msg.startswith("mute"):
         #     mute.mute_member(app, group, message)
@@ -705,6 +785,7 @@ async def group_message_handler(
         if msg.startswith("echo ") and msg != "echo ":
             message_a = message
             message_a.__root__[0].text = message_a.__root__[0].text.replace(
+            message_a.__root__[0].text = message_a.__root__[0].text.replace(
                 "echo ", "", 1
             )
             await app.send_group_message(group, message_a.as_sendable())
@@ -800,6 +881,7 @@ async def group_message_handler(
                         n1 = random.choice(ms)
                     bed["wife"][now.date()][group.id][member.id] = n1.id
                     bed["wife"][now.date()][group.id][n1.id] = member.id
+                    bed["wife"][now.date()][group.id][n1.id] = member.id
                 else:
                     n1 = await app.get_friend(app.account)
                     await app.send_group_message(
@@ -809,6 +891,7 @@ async def group_message_handler(
                                 At(member),
                                 Plain(" 群里没人能当你老婆了，那切噜就勉为其难的当你一天老婆吧！\n你今天的老婆是：\n"),
                                 Image(data_bytes=await n1.get_avatar(140)),
+                                Plain(f"\n{n1.name}（{n1.id}）"),
                                 Plain(f"\n{n1.name}（{n1.id}）"),
                             ]
                         ),
@@ -858,7 +941,7 @@ async def group_message_handler(
                 ),
             )
 
-        if False and message.display == "今日cp":
+        if message.display == "今日cp":
             # 在bed中建立wife存储今日老婆
             if not "wife" in bed:
                 bed["wife"] = {}
@@ -1008,6 +1091,46 @@ async def group_message_handler(
         #     fwd_nodeList[0].message_chain.extend(f"\n保底{m}星干员")
         #     message = MessageChain(Forward(nodeList=fwd_nodeList))
         #     await app.send_group_message(group, message)
+        # if msg.startswith("搜索公招"):
+        #     if len(message.__root__) < 3 or message.__root__[2].type != "Image":
+        #         return
+        #     url = message.__root__[2].url
+        #     ans, d = arknights.arkRecruit(url)
+        #     fwd_nodeList = []
+        #     mmm = f"识别到{len(ans)}个tag：\n"
+        #     for i in ans:
+        #         mmm += f"{i} "
+        #     mmm = mmm[:-1]
+        #     fwd_nodeList = [
+        #         ForwardNode(
+        #             target=member,
+        #             time=datetime.datetime.now(),
+        #             message=MessageChain(mmm),
+        #         )
+        #     ]
+        #     m = 1
+        #     for i in d:
+        #         sstr = ""
+        #         for j in i[0]:
+        #             sstr += j + "，"
+        #         sstr = sstr[:-1] + "："
+        #         sstr += "\n"
+        #         n = 6
+        #         for j in i[1]:
+        #             sstr += j["n"] + "，"
+        #             n = min(n, j["r"])
+        #         sstr = sstr[:-1]
+        #         m = max(m, n)
+        #         fwd_nodeList.append(
+        #             ForwardNode(
+        #                 target=member,
+        #                 time=datetime.datetime.now(),
+        #                 message=MessageChain(sstr),
+        #             )
+        #         )
+        #     fwd_nodeList[0].message_chain.extend(f"\n保底{m}星干员")
+        #     message = MessageChain(Forward(nodeList=fwd_nodeList))
+        #     await app.send_group_message(group, message)
 
         # if msg.startswith('ttest '):
         #     url = message.__root__[2].url
@@ -1034,8 +1157,18 @@ async def group_message_handler(
             flag = 0
             for at in message.get(At):
                 if at.target == app.account:
+                if at.target == app.account:
                     at.target = member.id
                     flag = 1
+                    now_minute = datetime.datetime.now().minute
+                    if not "atme" in bed:
+                        bed["atme"] = {member.id: {now_minute: 1}}
+                    elif not member.id in bed["atme"]:
+                        bed["atme"][member.id] = {now_minute: 1}
+                    elif not now_minute in bed["atme"][member.id]:
+                        bed["atme"][member.id] = {now_minute: 1}
+                    else:
+                        bed["atme"][member.id][now_minute] += 1
                     now_minute = datetime.datetime.now().minute
                     if not "atme" in bed:
                         bed["atme"] = {member.id: {now_minute: 1}}
@@ -1053,6 +1186,23 @@ async def group_message_handler(
                 except:
                     pass
             await app.send_group_message(group, message.as_sendable())
+            atme_times = bed["atme"][member.id][now_minute]
+            if atme_times >= 3:
+                switch.addBlackList(member.id)
+                await app.send_group_message(
+                    group,
+                    MessageChain([At(target=member), Plain(" 该用户频繁对bot进行骚扰，已自动拉黑")]),
+                )
+                await app.send_group_message(
+                    mygroup,
+                    MessageChain(
+                        [
+                            Plain(
+                                f"{member.name}({member.id})在群{group.name}({group.id})中对bot频繁骚扰，已自动拉黑"
+                            )
+                        ]
+                    ),
+                )
             atme_times = bed["atme"][member.id][now_minute]
             if atme_times >= 3:
                 switch.addBlackList(member.id)
@@ -1100,10 +1250,37 @@ async def group_message_handler(
                 else:
                     await app.send_group_message(group, MessageChain([Plain(res)]))
 
+        # 在线编译模块
+        if msg.startswith(tuple(compiler.compiler_lang)):
+            txt = msg.split("\n", 1)
+            if len(txt) > 1:
+                res = await compiler.compiler_main(txt[0].replace(" ", ""), txt[1])
+                if res.find("\n") != -1:
+                    await app.send_group_message(
+                        group,
+                        MessageChain(
+                            [
+                                Image(
+                                    data_bytes=image.image_to_bytes(
+                                        image.text_to_image(
+                                            res,
+                                            r"source/font/sarasa-fixed-sc-semibold.ttf",
+                                        )
+                                    ),
+                                    encoding="utf-8",
+                                )
+                            ]
+                        ),
+                    )
+                else:
+                    await app.send_group_message(group, MessageChain([Plain(res)]))
+
     except KeyboardInterrupt:
         print("quit")
     except Exception as e:
         traceback.print_exc()
+        if (traceback.format_exc().find("网络异常: 无头客户端处发生错误, 你应该检查其输出的错误日志") != -1):
+            return
         await app.send_group_message(
             group, MessageChain([Plain(traceback.format_exc())])
         )
@@ -1112,6 +1289,7 @@ async def group_message_handler(
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
+        decorators=[decorators.check_group(), decorators.check_ban(), DetectPrefix("expand ")],
         decorators=[decorators.check_group(), decorators.check_ban(), DetectPrefix("expand ")],
     )
 )
@@ -1131,15 +1309,20 @@ async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
         async with ClientSession() as session:
             async with session.post(url, data={"text": txt}) as response:
                 r = await response.json()
+        async with ClientSession() as session:
+            async with session.post(url, data={"text": txt}) as response:
+                r = await response.json()
         if r:
             r = r[0]
             if "inputting" in r and r["inputting"]:
                 ss = "%s 有可能是：" % r["name"]
                 r["inputting"].sort()
                 ss += "\n" + line_break("\t".join(r["inputting"]))
+                ss += "\n" + line_break("\t".join(r["inputting"]))
             elif "trans" in r and r["trans"]:
                 ss = "%s 可能是：" % r["name"]
                 r["trans"].sort()
+                ss += "\n" + line_break("\t".join(r["trans"]))
                 ss += "\n" + line_break("\t".join(r["trans"]))
             else:
                 ss = "你在说些什么"
@@ -1159,9 +1342,49 @@ async def expand_listener(app: Ariadne, message: MessageChain, group: Group):
             )
         else:
             await app.send_group_message(group, MessageChain([Plain(ss)]))
+        if ss.find("\n") != -1:
+            await app.send_group_message(
+                group,
+                MessageChain(
+                    [
+                        Image(
+                            data_bytes=image.image_to_bytes(image.text_to_image(ss)),
+                            encoding="utf-8",
+                        )
+                    ]
+                ),
+            )
+        else:
+            await app.send_group_message(group, MessageChain([Plain(ss)]))
     except Exception as e:
         traceback.print_exc()
         await app.send_group_message(group, MessageChain([Plain("服务器开小差了，请稍后再试哦~")]))
+
+
+def line_break(line: str, char_count=30 * 2) -> str:
+    ret = ""
+    width = 0
+    for c in line:
+        if len(c.encode("utf8")) == 3:  # 中文
+            # 中文宽度加2，注意换行边界
+            width += 2
+            ret += c
+        else:
+            if c == "\t":
+                space_c = 4 - width % 4  # 已有长度对TABLE_WIDTH取余
+                width += space_c
+                if width >= char_count:
+                    ret += "\n"
+                    width = 0
+                else:
+                    ret += "　" * (space_c // 2)
+                    ret += " " * (space_c % 2)
+            else:
+                width += 1
+                ret += c
+    if ret.endswith("\n"):
+        return ret[:-1]
+    return ret
 
 
 def line_break(line: str, char_count=30 * 2) -> str:

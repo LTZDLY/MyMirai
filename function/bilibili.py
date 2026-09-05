@@ -382,6 +382,10 @@ async def bili_private_handler(app, msgs, tcookie, acc_info=None):
             elif j["msg_type"] == 7:
                 tttemp["type"] = "video"
                 tttemp["content"] = json.loads(j["content"])
+            elif j["msg_type"] == 13:
+                tttemp["type"] = "img"
+                tttemp["content"] = json.loads(j["content"])
+                tttemp["content"]["url"] = tttemp["content"]["pic_url"]
             else:
                 tttemp["type"] = "unknow"
                 tttemp["content"] = {"content": "[不支持的消息类型]"}
@@ -457,6 +461,7 @@ async def login(app, group, msg: str, mytasks):
         bj = requests.utils.dict_from_cookiejar(get_cookies)["bili_jct"]
         sd = requests.utils.dict_from_cookiejar(get_cookies)["SESSDATA"]
         uid = requests.utils.dict_from_cookiejar(get_cookies)["DedeUserID"]
+        buvid3 = requests.utils.dict_from_cookiejar(get_cookies)["buvid3"]
 
         if n:
             temp = {}
@@ -465,12 +470,14 @@ async def login(app, group, msg: str, mytasks):
             temp["group"] = group.id
             temp["bili_jct"] = bj
             temp["SESSDATA"] = sd
-            temp["cookie"] = f"SESSDATA={sd}; bili_jct={bj}"
+            temp["buvid3"] = buvid3
+            temp["cookie"] = f"SESSDATA={sd}; bili_jct={bj}; buvid3={buvid3}"
             cookies[part] = temp
         else:
             cookies[part]["bili_jct"] = bj
             cookies[part]["SESSDATA"] = sd
-            cookies[part]["cookie"] = f"SESSDATA={sd}; bili_jct={bj}"
+            cookies[part]["cookie"] = buvid3
+            cookies[part]["cookie"] = f"SESSDATA={sd}; bili_jct={bj}; buvid3={buvid3}"
 
         with open(Localpath, "w", encoding="utf8") as fw:
             jsObj = json.dumps(cookies)
