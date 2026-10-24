@@ -148,13 +148,20 @@ def download_image(url, save_dir='./'):
         return file_path
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
+        for _ in range(3):
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                response.raise_for_status()
 
-        with open(file_path, 'wb') as f:
-            f.write(response.content)
+                with open(file_path, 'wb') as f:
+                    f.write(response.content)
 
-        return file_path
+                return file_path
+            except Exception:
+                if file_path.exists():
+                    file_path.unlink()
+                time.sleep(1)
+        return None
     except Exception:
         if file_path.exists():
             file_path.unlink()
@@ -164,18 +171,29 @@ def download_image(url, save_dir='./'):
 class VideoItem:
     """存储视频信息的类"""
 
-    def __init__(self, bvid: str):
+    VIDEO_SITE_BASE_URL = 'https://www.bilibili.com'
+
+    def __init__(self, bvid: str, raw_html: str = None):
         """
         初始化VideoItem对象
 
         参数:
         bvid (str): 视频bv号
+        raw_html (str): 原始HTML片段，提供时进入降级模式（不请求API）
         pic (str): 视频封面的图片地址URL
         title (str): 视频标题
         pubdate (int): 发布时间戳
         author (List[Any]): 作者对象数组
         """
         self.bvid = bvid  # 视频bv号
+        self.raw_html = raw_html
+        if raw_html is not None:
+            self.pic = ''
+            self.title = ''
+            self.pubdate = None
+            self.author = []
+            self.local_pic = ''
+            return
         video_info = self.parse_bv(bvid)
         self.pic = video_info['pic']  # 封面图片URL
         self.title = video_info['title']  # 视频标题
@@ -186,12 +204,16 @@ class VideoItem:
         file_name = f'odottemita{dt.strftime("%Y-%m")}'
         img_dir = base_dir / 'img' / file_name
         t = download_image(self.pic, img_dir)
+        if t is None:
+            raise RuntimeError(f"封面下载失败: {self.pic}")
         self.local_pic = f"/{'/'.join(t.parts[-3:])}"
 
     def __str__(self) -> str:
         """返回对象的字符串表示"""
-        pubdate_str = time.strftime(
-            '%Y-%m-%d %H:%M:%S', time.localtime(self.pubdate))
+        pubdate_str = (
+            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.pubdate))
+            if self.pubdate is not None else 'unknown'
+        )
         author_count = len(self.author)
         return f"VideoItem(id='{self.bvid}', title='{self.title}', pubdate={pubdate_str}, author_count={author_count})"
 
@@ -211,6 +233,12 @@ class VideoItem:
         """检查当前VideoItem是否早于另一个（基于pubdate，相同则基于bvid）"""
         if not isinstance(other, VideoItem):
             return NotImplemented
+
+        # pubdate缺失的降级条目排到最后
+        if self.pubdate is None or other.pubdate is None:
+            if self.pubdate is None and other.pubdate is None:
+                return False
+            return other.pubdate is None
 
         # 首先比较pubdate
         if self.pubdate != other.pubdate:
@@ -253,8 +281,19 @@ class VideoItem:
 
         url = url.format(bvid=bvid)
 
-        r = requests.get(url, headers=headers)
-        data = r.json()['data']
+        data = None
+        last_exc = None
+        for _ in range(3):
+            try:
+                r = requests.get(url, headers=headers, timeout=10)
+                data = r.json()['data']
+                if data:
+                    break
+            except Exception as e:
+                last_exc = e
+            time.sleep(1)
+        if not data:
+            raise RuntimeError(f"获取视频信息失败: {bvid}") from last_exc
         # print(data)
         pic = data['pic']
         title = data['title']
@@ -281,6 +320,10 @@ class VideoItem:
         返回:
         str: 视频项的HTML字符串
         """
+        # 降级条目直接使用原有HTML，避免重新生成时丢失信息
+        if self.raw_html is not None:
+            return self.raw_html
+
         # 使用指定的基础URL或默认值
         base_url = video_site_base_url or self.VIDEO_SITE_BASE_URL
 
@@ -332,7 +375,12 @@ class VideoItem:
 
         bvid = bvid_match.group(1)
 
-        return cls(bvid)
+        try:
+            return cls(bvid)
+        except Exception as e:
+            # API失败时保留原有HTML，避免重建月报时丢失旧条目
+            print(f"[警告] 视频信息获取失败，保留原有HTML: {bvid} ({e})")
+            return cls(bvid, raw_html=html_string)
 
     @classmethod
     def batch_from_html(cls, html_list: List[str]) -> List['VideoItem']:
@@ -432,7 +480,6 @@ def add_blog(bvid: str):
     接受一个视频，将其添加到博客当中
     根据bvid先查找到需要添加的图片文件夹和md文件，该步骤需要解析视频获得时间戳进行
     '''
-    global header_template
     # 根据bvid先查找到需要添加的图片文件夹和md文件，该步骤需要解析视频获得时间戳进行
     item = VideoItem(bvid)
     pubdate = item.pubdate
@@ -455,27 +502,38 @@ def add_blog(bvid: str):
         with open(post_file, encoding='utf-8') as f:
             post_content = f.read()
     else:
-        # 如果文件不存在，生成新文件
+        # 如果文件不存在，生成新文件（只读取全局模板，不回写，避免跨月污染）
         post_content = f'''{header_template.format(time=time_str, cover=item.local_pic, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))}
 {body_template}
 {css_template}
 '''
     vs = get_videos_from_blog(post_content)
+    if vs is None:
+        raise RuntimeError(f"无法从 {post_file} 解析出月报容器，已中止写入以保护原文件")
     if (item not in vs):
         vs.append(item)
     vs.sort()
-    header_template = post_content.split(
-        '<div class="monthly-report-container">')[0]
-    pattern = r'^cover: .*$'
-    repl = 'cover: ' + vs[0].local_pic
-    header_template = re.sub(pattern, repl, header_template, flags=re.MULTILINE)
 
-    post_content = f'''{header_template}<div class="monthly-report-container">{"".join([i.to_html() for i in vs])}
+    # 与get_videos_from_blog使用同样的宽松正则定位容器，避免口径不一致
+    container_match = re.search(
+        r'<div\s+class="monthly-report-container"[^>]*>', post_content)
+    if not container_match:
+        raise RuntimeError(f"未能在 {post_file} 中定位月报容器，已中止写入以保护原文件")
+    header = post_content[:container_match.start()]
+    if vs[0].local_pic:
+        repl = 'cover: ' + vs[0].local_pic
+        header = re.sub(r'^cover: .*$', lambda _: repl,
+                        header, flags=re.MULTILINE)
+
+    post_content = f'''{header}<div class="monthly-report-container">{"".join([i.to_html() for i in vs])}
 </div>
 {css_template}
 '''
-    with open(post_file, 'w', encoding='utf-8') as f:
+    post_file.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = post_file.with_name(post_file.name + '.tmp')
+    with open(tmp_file, 'w', encoding='utf-8') as f:
         f.write(post_content)
+    tmp_file.replace(post_file)
     return time_str
 
     # print(item.to_html('https://www.bilibili.com'))
