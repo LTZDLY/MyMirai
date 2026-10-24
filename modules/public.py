@@ -8,7 +8,6 @@ import time
 import time
 import traceback
 from aiohttp import ClientSession
-from aiohttp import ClientSession
 
 import requests
 from graia.ariadne.app import Ariadne
@@ -60,7 +59,6 @@ async def callme_listener(
 ):
     # 监听事件永远最优先
     if type(message.__root__[0]) == Forward:
-    if type(message.__root__[0]) == Forward:
         return
     for i in listen:
         if i in message.as_persistent_string():
@@ -86,7 +84,6 @@ async def callme_listener(
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
-        decorators=[decorators.check_permission(3), DetectPrefix("define ")],
         decorators=[decorators.check_permission(3), DetectPrefix("define ")],
     )
 )
@@ -123,7 +120,7 @@ async def switch_listener(
 async def mute_listener(
     app: Ariadne, message: MessageChain, group: Group, member: Member
 ):
-        mute.mute_member(app, group, message)
+    mute.mute_member(app, group, message)
     signup.define(message.display)
 
 @channel.use(
@@ -185,7 +182,6 @@ async def cheru(app: Ariadne, group: Group, member: Member):
     ListenerSchema(
         listening_events=[GroupMessage],
         decorators=[decorators.check_ban()],
-        decorators=[decorators.check_ban()],
     )
 )
 async def bili_message_handler(
@@ -196,8 +192,6 @@ async def bili_message_handler(
         if member.id == hostqq and message.display.startswith("bilibili"):
             await bilibili.bilibili(app, group, message.display)
 
-        permissionflag = permission.permissionCheck(member.id, group.id)
-        if permissionflag >= 2 and message.display.startswith("bilibili"):
         permissionflag = permission.permissionCheck(member.id, group.id)
         if permissionflag >= 2 and message.display.startswith("bilibili"):
             await bilibili.bilibili_group(app, mytasks, group, message.display)
@@ -224,7 +218,6 @@ async def group_message_handler(
     #     return
 
     # 权限检查
-    # permissionflag = permission.permissionCheck(member.id, group.id)
     # permissionflag = permission.permissionCheck(member.id, group.id)
 
     try:
@@ -418,13 +411,9 @@ async def group_message_handler(
 
         if member.id == 1585165857 or member.id == hostqq:
             if message.display == "开始万引直播":
-        if member.id == 1585165857 or member.id == hostqq:
-            if message.display == "开始万引直播":
                 await bilibili.get_gravity(app, group, member)
-            if message.display == "开始万引直播":
-            if message.display == "开始万引直播":
+            if message.display == "关闭万引直播":
                 await bilibili.end_gravity(app, group)
-            if message.display.startswith("开始万引直播间标题"):
             if message.display.startswith("开始万引直播间标题"):
                 await bilibili.change_gravity(app, group, message.display)
 
@@ -508,7 +497,7 @@ async def group_message_handler(
                         live[room_id] = asyncio.create_task(
                             danmaku.entrence(app, room_id)
                         )
-                    info = danmaku.get_info(room_id)
+                    info = bilibili.get_info(room_id)
                     await app.send_group_message(
                         group,
                         MessageChain(
@@ -543,7 +532,7 @@ async def group_message_handler(
                         with open(Localpath, "w", encoding="utf8") as fw:
                             jsObj = json.dumps(data)
                             fw.write(jsObj)
-                        info = danmaku.get_info(room_id)
+                        info = bilibili.get_info(room_id)
                         await app.send_group_message(
                             group,
                             MessageChain(
@@ -558,7 +547,7 @@ async def group_message_handler(
 
         if msg.startswith("查询直播间 "):
             room_id = msg.replace("查询直播间 ", "")
-            info = danmaku.get_info(room_id)
+            info = bilibili.get_info(room_id)
             if not "msg" in info:
                 if info["live_status"] == 0:
                     status = "未开播"
@@ -813,7 +802,6 @@ async def group_message_handler(
         # echo模块
         if msg.startswith("echo ") and msg != "echo ":
             message_a = message
-            message_a.__root__[0].text = message_a.__root__[0].text.replace(
             message_a.__root__[0].text = message_a.__root__[0].text.replace(
                 "echo ", "", 1
             )
@@ -1186,7 +1174,6 @@ async def group_message_handler(
             flag = 0
             for at in message.get(At):
                 if at.target == app.account:
-                if at.target == app.account:
                     at.target = member.id
                     flag = 1
                     now_minute = datetime.datetime.now().minute
@@ -1318,7 +1305,6 @@ async def group_message_handler(
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
-        decorators=[decorators.check_group(), decorators.check_ban(), DetectPrefix("expand ")],
         decorators=[decorators.check_group(), decorators.check_ban(), DetectPrefix("expand ")],
     )
 )

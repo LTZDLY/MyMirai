@@ -12,8 +12,7 @@ import brotli
 # import speech
 from aiowebsocket.converses import AioWebSocket
 
-from logger import logger
-
+from function.logger import logger
 from function.tools import decode_protobuf, get_data, hb
 
 async def startup(room_id: str):

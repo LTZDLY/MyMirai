@@ -10,8 +10,7 @@ import aiohttp
 import brotli
 
 # import speech
-from logger import logger
-
+from function.logger import logger
 from function.tools import decode_protobuf, get_data, hb
 
 async def entrence(room_id):
