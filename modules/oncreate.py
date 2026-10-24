@@ -163,6 +163,8 @@ async def repeattt(app: Ariadne):
     asyncio.create_task(repeat.clock(app, mytasks))
     asyncio.create_task(repeat.clock_test(app))
 
+    bilibili.danmuload()
+
     Localpath = "./data/live.json"
     data = {}
     fr = open(Localpath, encoding="utf-8")

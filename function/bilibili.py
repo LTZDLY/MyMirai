@@ -31,7 +31,6 @@ def dec(x):
         r += tr[x[s[i]]] * 58**i
     return (r - add) ^ xor
 
-
 async def sign(app, group):
     Localpath = "./data/cookies.json"
     data = {}
@@ -585,3 +584,134 @@ async def change_gravity(app, group, msg: str):
         await app.send_group_message(
             group, MessageChain([Plain(f"直播间标题更改失败，原因：\n{r['message']}")])
         )
+
+
+# 弹幕转发缓存：room_id(str) -> [group_id, ...]
+danmu_group = {}
+
+def get_info(room_id: str):
+    """获取b站用户个人信息"""
+    Localpath = "./data/cookies.json"
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+    headers = {"user-Agent": user_agent}
+
+    url = (
+        "https://api.live.bilibili.com/room/v1/Room/get_info?room_id=%s"
+        % room_id
+    )
+
+    data_raw = requests.get(url, headers=headers).json()
+    if data_raw["code"] == 0:
+        uid = data_raw["data"]["uid"]
+        kf = data_raw["data"]["keyframe"]
+        data = data_raw["data"]
+        url2 = ("https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids?uids[]=%d") % uid
+        r2 = requests.get(url2, headers=headers).json()
+        data = r2["data"][str(uid)]
+        data["keyframe"] = kf
+    else:
+        print(data_raw)
+        data = {"msg": "没有这个直播间"}
+    return data
+
+
+def livewrite(group: int, room_id: int):
+    """写入json文件"""
+    Localpath = "./data/live.json"
+    data = {}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
+
+    for i in data["data"]:
+        if i["room_id"] == room_id:
+            l = i["group"]
+            l.append(group)
+            i["group"] = l
+            break
+    else:
+        l = data["data"]
+        n = {"room_id": room_id, "group": [group]}
+        l.append(n)
+        data["data"] = l
+        pass
+
+    with open(Localpath, "w", encoding="utf8") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+    pass
+
+
+def danmuload():
+    """从json文件加载弹幕转发配置到缓存"""
+    Localpath = "./data/danmu.json"
+    data = {"data": []}
+    if os.path.exists(Localpath):
+        with open(Localpath, encoding="utf-8") as fr:
+            data = json.load(fr)
+            fr.close()
+    danmu_group.clear()
+    for i in data["data"]:
+        danmu_group[str(i["room_id"])] = i["group"]
+
+
+def danmuwrite(group: int, room_id: int):
+    """写入弹幕转发配置文件并刷新缓存"""
+    Localpath = "./data/danmu.json"
+    data = {"data": []}
+    if os.path.exists(Localpath):
+        with open(Localpath, encoding="utf-8") as fr:
+            data = json.load(fr)
+            fr.close()
+
+    for i in data["data"]:
+        if i["room_id"] == room_id:
+            l = i["group"]
+            if group not in l:
+                l.append(group)
+            i["group"] = l
+            break
+    else:
+        l = data["data"]
+        n = {"room_id": room_id, "group": [group]}
+        l.append(n)
+        data["data"] = l
+        pass
+
+    with open(Localpath, "w", encoding="utf8") as fw:
+        jsObj = json.dumps(data)
+        fw.write(jsObj)
+        fw.close()
+    danmuload()
+
+
+def danmuremove(group: int, room_id: int) -> bool:
+    """从弹幕转发配置文件移除指定群并刷新缓存"""
+    Localpath = "./data/danmu.json"
+    if not os.path.exists(Localpath):
+        return False
+    data = {"data": []}
+    with open(Localpath, encoding="utf-8") as fr:
+        data = json.load(fr)
+        fr.close()
+
+    for i in data["data"]:
+        if i["room_id"] == room_id:
+            if group not in i["group"]:
+                return False
+            if len(i["group"]) > 1:
+                i["group"].remove(group)
+            else:
+                data["data"].remove(i)
+            with open(Localpath, "w", encoding="utf8") as fw:
+                jsObj = json.dumps(data)
+                fw.write(jsObj)
+                fw.close()
+            danmuload()
+            return True
+    return False

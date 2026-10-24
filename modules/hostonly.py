@@ -58,7 +58,7 @@ async def recall_listener(app: Ariadne, message: MessageChain, group: Group):
 )
 async def fun(app: Ariadne, message: MessageChain, member: Member, group: Group):
     if member.id == hostqq and message.display == "生日测试":
-        await excel.readexcel(app, 958056260)
+        await excel.readexcel(app, 581833643)
 
     # 权限增删
     if message.display.startswith("set ") or message.display.startswith("off "):

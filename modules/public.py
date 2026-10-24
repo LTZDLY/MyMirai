@@ -560,12 +560,7 @@ async def group_message_handler(
             room_id = msg.replace("查询直播间 ", "")
             info = danmaku.get_info(room_id)
             if not "msg" in info:
-                if info["lock_status"] == 1:
-                    status = "封禁中"
-                elif info["live_status"] == 0:
-                if info["lock_status"] == 1:
-                    status = "封禁中"
-                elif info["live_status"] == 0:
+                if info["live_status"] == 0:
                     status = "未开播"
                 elif info["live_status"] == 1:
                     status = "直播中"
@@ -573,23 +568,16 @@ async def group_message_handler(
                     status = "轮播中"
                 sstr = (
                     f'用户名：{info["uname"]}({info["uid"]})\n直播间标题：{info["title"]}\n'
-                    + f'直播分区：{info["parent_area_name"]} - {info["area_name"]}\n'
+                    + f'直播分区：{info["area_v2_parent_name"]} - {info["area_v2_name"]}\n'
                     + f'直播间地址：https://live.bilibili.com/{info["room_id"]}\n'
-                    + f"""直播间短号：{f"https://live.bilibili.com/{info['short_id']}" if info['short_id'] else "无"}\n"""
+                    + ((f"直播间短号：https://live.bilibili.com/{info['short_id']}" + '\n') if info['short_id'] != 0 else '')
                     + f"直播间状态：{status}\n"
                     + (
-                        f'解封时间：{time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(info["lock_time"]))}\n'
-                        if info["lock_status"]
+                        f'解封时间：{time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(info["lock_till"]))}\n'
+                        if info["lock_till"] != "0000-00-00 00:00:00"
                         else ""
                     )
-                    + f"直播关键帧："
-                    + f"直播间状态：{status}\n"
-                    + (
-                        f'解封时间：{time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(info["lock_time"]))}\n'
-                        if info["lock_status"]
-                        else ""
-                    )
-                    + f"直播关键帧："
+                    + f"直播关键帧：{f'没有关键帧，主播可能超过一周没直播了呢~' if info['keyframe'] == '' else ''}"
                 )
                 # fre.append(time.time())
                 await app.send_group_message(
@@ -597,6 +585,47 @@ async def group_message_handler(
                 )
             else:
                 await app.send_group_message(group, MessageChain([Plain(info["msg"])]))
+
+        # 弹幕转发模块
+        if msg.startswith("订阅弹幕 "):
+            room_id = msg.replace("订阅弹幕 ", "")
+
+            Localpath = "./data/live.json"
+            data = {}
+            with open(Localpath, encoding="utf-8") as fr:
+                data = json.load(fr)
+                fr.close()
+
+            for i in data["data"]:
+                if room_id == str(i["room_id"]):
+                    bilibili.danmuwrite(group.id, int(room_id))
+                    info = bilibili.get_info(room_id)
+                    await app.send_group_message(
+                        group,
+                        MessageChain(
+                            [Plain("开启对%s(%d)的直播间弹幕转发" % (info["uname"], info["uid"]))]
+                        ),
+                    )
+                    break
+            else:
+                await app.send_group_message(
+                    group, MessageChain([Plain("请先订阅直播后再开启弹幕转发")])
+                )
+
+        if msg.startswith("取消弹幕 "):
+            room_id = msg.replace("取消弹幕 ", "")
+            if bilibili.danmuremove(group.id, int(room_id)):
+                info = bilibili.get_info(room_id)
+                await app.send_group_message(
+                    group,
+                    MessageChain(
+                        [Plain("关闭对%s(%d)的直播间弹幕转发" % (info["uname"], info["uid"]))]
+                    ),
+                )
+            else:
+                await app.send_group_message(
+                    group, MessageChain([Plain("该直播间并未对本群开启弹幕转发")])
+                )
 
         # # canvas任务爬取模块
         # global sess

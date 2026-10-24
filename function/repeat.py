@@ -22,7 +22,7 @@ async def repeat(app):
             sss = f'切噜~！{year}新年快乐！！新的一年也请多多指教哦！~☆'
         elif h == 7:
             asyncio.create_task(bilibili.sign(app, 372733015))
-            asyncio.create_task(excel.readexcel(app, 958056260))
+            asyncio.create_task(excel.readexcel(app, 581833643))
             sss = f'切噜~！已经七点了！{year}年的第一天请不要睡懒觉噜！∑'
         elif h == 12:
             sss = f'切噜~！中午好！尽情地享受{year}年的第一顿午饭吧！☆'
@@ -36,7 +36,7 @@ async def repeat(app):
     else:
         if h == 7:
             asyncio.create_task(bilibili.sign(app, 372733015))
-            asyncio.create_task(excel.readexcel(app, 958056260))
+            asyncio.create_task(excel.readexcel(app, 581833643))
             sss = '切噜~！早上好！已经七点了！该起床咯！'
         elif h == 12:
             sss = '切噜~！中午好！12点到啦吃午饭了吗！'
